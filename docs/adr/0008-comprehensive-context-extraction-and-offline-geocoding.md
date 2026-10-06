@@ -1,0 +1,3 @@
+# 0008. Comprehensive Multi-Layer Context Extraction and Offline Geocoding
+
+We decided that `phaste` will capture maximum possible context for every Phaste across client, network, and content layers. Spatial context is resolved through a multi-tier hierarchy (Browser Geolocation -> Image EXIF GPS -> Ingress/Client IP GeoLite) and reverse-geocoded completely offline into human-readable City, Region, and Country names using local databases (`reverse_geocoder`). In addition, client environment (OS, browser, timezone, clipboard source URL) and content-specific attributes (EXIF camera settings, syntax language, OpenGraph tags, video duration/uploader) are preserved in a flexible PostgreSQL `JSONB` document for filtering and search.

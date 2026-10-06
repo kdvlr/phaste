@@ -1,0 +1,37 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: phaste-dev-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: phaste
+      POSTGRES_PASSWORD: phaste_password
+      POSTGRES_DB: phaste
+    volumes:
+      - dev-postgres-data:/var/lib/postgresql/data
+
+  phaste:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: phaste-dev-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://phaste:phaste_password@db:5432/phaste"
+      PHASTE_API_TOKEN: "phaste_dev_secret"
+      MEDIA_ROOT: "/data/media"
+      MODELS_CACHE_DIR: "/data/models"
+    volumes:
+      - dev-media:/data/media
+      - dev-models:/data/models
+    depends_on:
+      - db
+
+volumes:
+  dev-postgres-data:
+  dev-media:
+  dev-models:

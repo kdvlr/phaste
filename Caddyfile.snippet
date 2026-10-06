@@ -1,0 +1,29 @@
+# Caddyfile block for phaste.dkiran.com on linsrv
+# Place inside /docker/caddyv2/Caddyfile and reload via:
+# ssh linsrv "/docker/caddyv2/caddy validate --config /docker/caddyv2/Caddyfile && cd /docker/caddyv2 && ./caddy reload --config Caddyfile"
+
+phaste.dkiran.com {
+    # Matcher for API requests and programmatic callers to bypass Ingress OTP (ADR 0012)
+    @api_or_token {
+        path /api/*
+        header Authorization Bearer*
+    }
+
+    # All non-API browser traffic must pass through Ingress OTP forward_auth gate
+    handle {
+        @not_api {
+            not path /api/*
+            not header Authorization Bearer*
+        }
+        forward_auth @not_api http://127.0.0.1:9090 {
+            uri /verify
+            copy_headers Remote-User Remote-Email
+        }
+
+        reverse_proxy http://127.0.0.1:8120 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up Host {host}
+        }
+    }
+}

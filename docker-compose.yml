@@ -1,0 +1,28 @@
+services:
+  phaste:
+    container_name: phaste
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: phaste:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8120:8000"
+    volumes:
+      - /docker/phaste/media:/data/media
+      - /docker/phaste/models:/data/models
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://phaste:RWx3LNo7qZF7DcEeMFDfcAA1@postgres:5432/phaste"
+      PHASTE_API_TOKEN: "${PHASTE_API_TOKEN:-phaste_secret_token_123}"
+      MEDIA_ROOT: "/data/media"
+      MODELS_CACHE_DIR: "/data/models"
+      MAX_VIDEO_SIZE_MB: "500"
+      MAX_VIDEO_HEIGHT: "1080"
+      SCRAPE_TIMEOUT_SECONDS: "1.5"
+    networks:
+      - linsrv_default
+
+networks:
+  linsrv_default:
+    external: true

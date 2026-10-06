@@ -1,0 +1,3 @@
+# 0012. Ingress OTP Gate Deployment on phaste.dkiran.com with Bearer Token Bypass
+
+We decided to deploy `phaste` on `linsrv` exposed via the subdomain `phaste.dkiran.com`. In alignment with homelab security architecture, browser navigation to the web application is protected by the Ingress OTP gate (`forward_auth http://127.0.0.1:9090 { uri /verify }`). To enable automated clipping from browser extensions, CLI utilities, and iOS Shortcuts, requests containing a valid `Authorization: Bearer <TOKEN>` header or targeting `/api/*` bypass the OTP challenge and are validated directly by `phaste`'s API security middleware.
