@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy import select, text, and_, or_, desc
@@ -5,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.phaste import Phaste
 from app.services.embedding_service import embedding_service
 from app.schemas.phaste import PhasteResponse, SearchResultItem, SearchResponse
+
+logger = logging.getLogger(__name__)
 
 
 def parse_query_filters(raw_query: str) -> Tuple[str, Dict[str, Any]]:
@@ -141,8 +144,8 @@ async def execute_hybrid_search(
         ),
         vector_ranked AS (
             SELECT id,
-                   (1.0 - (visual_embedding <=> :query_vector::vector)) AS sim_score,
-                   ROW_NUMBER() OVER (ORDER BY (visual_embedding <=> :query_vector::vector) ASC) AS vec_pos
+                   (1.0 - (visual_embedding <=> CAST(:query_vector AS vector))) AS sim_score,
+                   ROW_NUMBER() OVER (ORDER BY (visual_embedding <=> CAST(:query_vector AS vector)) ASC) AS vec_pos
             FROM phastes
             WHERE {where_sql}
               AND visual_embedding IS NOT NULL
@@ -190,6 +193,8 @@ async def execute_hybrid_search(
             filters_applied=filters
         )
     except Exception as e:
+        logger.warning(f"Hybrid search failed, rolling back and falling back to ILIKE: {e}")
+        await db.rollback()
         # Fallback to simple ILIKE search if tsquery or vector fails
         fallback_sql = f"""
             SELECT *, 0.5 AS score, 'lexical' AS match_type
