@@ -209,6 +209,7 @@ async def create_phaste(
             client_ctx = payload.client_context
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
+    else:
         form = await request.form()
         raw_file = form.get("file")
         if raw_file and hasattr(raw_file, "filename") and hasattr(raw_file, "read"):
