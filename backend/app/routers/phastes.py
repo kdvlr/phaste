@@ -209,10 +209,9 @@ async def create_phaste(
             client_ctx = payload.client_context
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
-    else:
         form = await request.form()
         raw_file = form.get("file")
-        if isinstance(raw_file, UploadFile):
+        if raw_file and hasattr(raw_file, "filename") and hasattr(raw_file, "read"):
             file = raw_file
         raw_content = form.get("raw_content") or form.get("content")
         if isinstance(raw_content, str):
@@ -223,6 +222,14 @@ async def create_phaste(
         raw_title = form.get("title_form") or form.get("title")
         if isinstance(raw_title, str):
             title = raw_title
+        raw_client_ctx = form.get("client_context")
+        if isinstance(raw_client_ctx, str):
+            try:
+                import json
+                ctx_dict = json.loads(raw_client_ctx)
+                client_ctx = ClientContext.model_validate(ctx_dict)
+            except Exception:
+                pass
 
     # Base metadata context
     metadata_context = {}
