@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from app.config import settings
 from app.database import init_db
 from app.routers import phastes, search, media, events, public
@@ -50,16 +50,29 @@ async def health_check():
 
 
 # Mount static frontend build in production (ADR 0007)
-frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if not frontend_dist.exists():
+    frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
 if frontend_dist.exists():
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/")
+    async def serve_spa_root():
+        index_file = frontend_dist / "index.html"
+        return FileResponse(index_file)
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        # Let API endpoints fall through
+        # Don't intercept API or public share endpoints
         if full_path.startswith("api/") or full_path.startswith("s/"):
-            return None
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        candidate = frontend_dist / full_path
+        if candidate.is_file():
+            return FileResponse(candidate)
         index_file = frontend_dist / "index.html"
         if index_file.exists():
             return FileResponse(index_file)
-        return {"error": "Frontend not found"}
+        return JSONResponse(status_code=404, content={"detail": "Frontend bundle not found"})
