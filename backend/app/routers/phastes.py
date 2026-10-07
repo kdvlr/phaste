@@ -182,12 +182,16 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
 
 
 def extract_client_network_info(request: Request) -> Dict[str, Any]:
+    # Priority: Cloudflare's CF-Connecting-IP > X-Real-IP > X-Forwarded-For > client host
+    cf_ip = request.headers.get("cf-connecting-ip")
+    raw_real_ip = request.headers.get("x-real-ip")
     raw_xff = request.headers.get("x-forwarded-for")
-    raw_real_ip = request.headers.get("x-real-ip") or request.headers.get("cf-connecting-ip")
 
-    if raw_real_ip:
+    if cf_ip and cf_ip.strip():
+        ip = cf_ip.strip()
+    elif raw_real_ip and raw_real_ip.strip():
         ip = raw_real_ip.strip()
-    elif raw_xff:
+    elif raw_xff and raw_xff.strip():
         ip = raw_xff.split(",")[0].strip()
     elif request.client:
         ip = request.client.host
@@ -195,6 +199,33 @@ def extract_client_network_info(request: Request) -> Dict[str, Any]:
         ip = "127.0.0.1"
 
     user_agent = request.headers.get("user-agent", "")
+
+    # Cloudflare edge geolocation headers
+    cf_city = request.headers.get("cf-ipcity")
+    cf_region = request.headers.get("cf-region") or request.headers.get("cf-region-code")
+    cf_country = request.headers.get("cf-ipcountry")
+    cf_lat_str = request.headers.get("cf-iplatitude")
+    cf_lon_str = request.headers.get("cf-iplongitude")
+
+    cf_lat = None
+    cf_lon = None
+    try:
+        if cf_lat_str:
+            cf_lat = float(cf_lat_str.strip())
+        if cf_lon_str:
+            cf_lon = float(cf_lon_str.strip())
+    except (ValueError, TypeError):
+        pass
+
+    cf_geo = None
+    if cf_city or cf_country or cf_lat is not None:
+        cf_geo = {
+            "city": cf_city,
+            "region": cf_region,
+            "country_code": cf_country,
+            "latitude": cf_lat,
+            "longitude": cf_lon,
+        }
 
     is_local = (
         ip.startswith("192.168.")
@@ -214,6 +245,7 @@ def extract_client_network_info(request: Request) -> Dict[str, Any]:
         "ip": ip,
         "user_agent": user_agent,
         "is_local": is_local,
+        "cf_geo": cf_geo,
     }
 
 
@@ -410,25 +442,48 @@ async def create_phaste(
         metadata_context["client"] = client_ctx.model_dump(exclude_none=True)
         if client_ctx.latitude and client_ctx.longitude:
             geo = await reverse_geocode_coordinates(client_ctx.latitude, client_ctx.longitude)
+            geo["source"] = "browser_gps"
             metadata_context["location"] = geo
             metadata_context["city"] = geo.get("city")
             metadata_context["country_code"] = geo.get("country_code")
 
-    # If no GPS location was extracted, populate network-level location
+    # If no GPS location was extracted, populate Cloudflare edge or network-level location
     if "location" not in metadata_context:
-        if network_info["is_local"]:
+        cf_geo = network_info.get("cf_geo")
+        if cf_geo and (cf_geo.get("city") or cf_geo.get("country_code")):
+            city = cf_geo.get("city")
+            region = cf_geo.get("region")
+            cc = cf_geo.get("country_code")
+            formatted_loc = ", ".join(filter(None, [city, region, cc]))
+            metadata_context["location"] = {
+                "city": city,
+                "region": region,
+                "country_code": cc,
+                "latitude": cf_geo.get("latitude"),
+                "longitude": cf_geo.get("longitude"),
+                "formatted": formatted_loc or f"IP: {network_info['ip']}",
+                "formatted_location": formatted_loc or f"IP: {network_info['ip']}",
+                "source": "cloudflare_edge",
+            }
+            if city:
+                metadata_context["city"] = city
+            if cc:
+                metadata_context["country_code"] = cc
+        elif network_info["is_local"]:
             metadata_context["location"] = {
                 "city": "Home LAN",
                 "region": "Local Network",
                 "country_code": "LAN",
-                "formatted": f"Local Network ({network_info['ip']})",
+                "formatted": f"Home LAN ({network_info['ip']})",
+                "formatted_location": f"Home LAN ({network_info['ip']})",
                 "source": "lan_ip",
             }
             metadata_context["city"] = "Home LAN"
             metadata_context["country_code"] = "LAN"
         else:
             metadata_context["location"] = {
-                "formatted": f"IP: {network_info['ip']}",
+                "formatted": f"Public IP: {network_info['ip']}",
+                "formatted_location": f"Public IP: {network_info['ip']}",
                 "source": "remote_ip",
             }
 

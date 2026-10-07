@@ -10,9 +10,10 @@ interface PhasteFeedProps {
   isLoading: boolean;
   onPinToggle: (id: string, current: boolean) => void;
   onDelete: (id: string) => void;
-  onImageClick: (phaste: Phaste) => void;
-  onInspect: (phaste: Phaste) => void;
-  onToast: (msg: string) => void;
+  onSelect: (phaste: Phaste) => void;
+  onImageClick?: (phaste: Phaste) => void;
+  onInspect?: (phaste: Phaste) => void;
+  onToast: (msg: string, type?: 'info' | 'success' | 'error') => void;
 }
 
 interface DateGroup {
@@ -85,6 +86,7 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
   isLoading,
   onPinToggle,
   onDelete,
+  onSelect,
   onImageClick,
   onInspect,
   onToast,
@@ -155,6 +157,7 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
                       phaste={phaste}
                       onPinToggle={onPinToggle}
                       onDelete={onDelete}
+                      onSelect={onSelect}
                       onImageClick={onImageClick}
                       onInspect={onInspect}
                       onToast={onToast}
@@ -220,6 +223,7 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
                 phaste={phaste}
                 onPinToggle={onPinToggle}
                 onDelete={onDelete}
+                onSelect={onSelect}
                 onImageClick={onImageClick}
                 onInspect={onInspect}
                 onToast={onToast}

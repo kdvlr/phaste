@@ -67,7 +67,7 @@ if frontend_dist.exists():
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         # Don't intercept API or public share endpoints
-        if full_path.startswith("api/") or full_path.startswith("s/"):
+        if full_path.startswith("api/") or full_path.startswith("s/") or full_path.startswith("sh/"):
             return JSONResponse(status_code=404, content={"detail": "Not Found"})
         candidate = frontend_dist / full_path
         if candidate.is_file():

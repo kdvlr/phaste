@@ -47,6 +47,13 @@ function detectBrowserAndOS() {
 
 let cachedCoords: { latitude: number; longitude: number } | null = null;
 
+try {
+  const saved = typeof localStorage !== 'undefined'
+    ? (localStorage.getItem('phaste_cached_coords') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('phaste_cached_coords') : null))
+    : null;
+  if (saved) cachedCoords = JSON.parse(saved);
+} catch (_) {}
+
 export function requestAndCacheLocation() {
   if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
     navigator.geolocation.getCurrentPosition(
@@ -56,19 +63,54 @@ export function requestAndCacheLocation() {
           longitude: pos.coords.longitude,
         };
         try {
+          localStorage.setItem('phaste_cached_coords', JSON.stringify(cachedCoords));
           sessionStorage.setItem('phaste_cached_coords', JSON.stringify(cachedCoords));
         } catch (_) {}
       },
       () => {},
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
     );
   }
 }
 
-try {
-  const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('phaste_cached_coords') : null;
-  if (saved) cachedCoords = JSON.parse(saved);
-} catch (_) {}
+export function requestLocationPermission(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      resolve(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        cachedCoords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+        try {
+          localStorage.setItem('phaste_cached_coords', JSON.stringify(cachedCoords));
+          sessionStorage.setItem('phaste_cached_coords', JSON.stringify(cachedCoords));
+        } catch (_) {}
+        resolve(true);
+      },
+      () => {
+        resolve(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  });
+}
+
+export async function getLocationStatus(): Promise<'granted' | 'prompt' | 'denied' | 'unsupported'> {
+  if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+    return 'unsupported';
+  }
+  if ('permissions' in navigator && navigator.permissions.query) {
+    try {
+      const res = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+      return res.state;
+    } catch (_) {}
+  }
+  return cachedCoords ? 'granted' : 'prompt';
+}
 
 export function getClientContext() {
   const { browser, browserVersion, os, deviceType } = detectBrowserAndOS();

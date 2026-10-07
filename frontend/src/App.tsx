@@ -20,10 +20,11 @@ import { FilterChips } from './components/FilterChips';
 import { PhasteFeed } from './components/PhasteFeed';
 import { ImageLightbox } from './components/ImageLightbox';
 import { MetadataModal } from './components/MetadataModal';
+import { PhasteDetailModal } from './components/PhasteDetailModal';
 import { Snackbar } from './components/Snackbar';
 import { useAmbientCapture } from './hooks/useAmbientCapture';
 import { useEvents } from './hooks/useEvents';
-import { requestAndCacheLocation } from './api';
+import { requestAndCacheLocation, requestLocationPermission, getLocationStatus } from './api';
 
 export const App: React.FC = () => {
   const [phastes, setPhastes] = useState<Phaste[]>([]);
@@ -34,16 +35,30 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeLightbox, setActiveLightbox] = useState<Phaste | null>(null);
   const [selectedPhasteForModal, setSelectedPhasteForModal] = useState<Phaste | null>(null);
+  const [selectedDetailPhaste, setSelectedDetailPhaste] = useState<Phaste | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'granted' | 'prompt' | 'denied' | 'unsupported'>('prompt');
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
 
   const showToast = useCallback((text: string, type: 'info' | 'success' | 'error' = 'info') => {
     setSnackbar({ id: String(Date.now()), text, type });
   }, []);
 
-  // 1. Initial & Filtered Data Loading
+  // 1. Initial & Filtered Data Loading + Geolocation Permission Query
   useEffect(() => {
     requestAndCacheLocation();
+    getLocationStatus().then((s) => setLocationStatus(s));
   }, []);
+
+  const handleEnableLocation = async () => {
+    const granted = await requestLocationPermission();
+    if (granted) {
+      setLocationStatus('granted');
+      showToast('Location permission granted! GPS coordinates active.', 'success');
+    } else {
+      setLocationStatus('denied');
+      showToast('Location permission denied or unavailable.', 'info');
+    }
+  };
 
   const loadPhastes = useCallback(async () => {
     setIsLoading(true);
@@ -112,12 +127,14 @@ export const App: React.FC = () => {
           prev?.map((r) => (r.phaste.id === updatedItem.id ? { ...r, phaste: updatedItem } : r)) || null
         );
       }
+      setSelectedDetailPhaste((prev) => (prev?.id === updatedItem.id ? updatedItem : prev));
     },
     onPhasteDeleted: ({ id }) => {
       setPhastes((prev) => prev.filter((p) => p.id !== id));
       if (searchResults) {
         setSearchResults((prev) => prev?.filter((r) => r.phaste.id !== id) || null);
       }
+      setSelectedDetailPhaste((prev) => (prev?.id === id ? null : prev));
     },
   });
 
@@ -126,6 +143,7 @@ export const App: React.FC = () => {
     try {
       const updated = await updatePhaste(id, { is_pinned: !current });
       setPhastes((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      setSelectedDetailPhaste((prev) => (prev?.id === id ? updated : prev));
       showToast(updated.is_pinned ? 'Pinned to top' : 'Unpinned');
     } catch {
       showToast('Failed to update pin status', 'error');
@@ -173,6 +191,32 @@ export const App: React.FC = () => {
 
         {/* Ambient status & Author indicator */}
         <div className="flex items-center gap-2.5 text-xs text-md3-on-surface-variant">
+          {/* Location Permission Status / Trigger */}
+          {locationStatus === 'granted' ? (
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-medium"
+              title="High-accuracy GPS location attached to pastes"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>📍 GPS Active</span>
+            </span>
+          ) : locationStatus === 'prompt' ? (
+            <button
+              onClick={handleEnableLocation}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-md3-surface-container-high hover:bg-md3-surface-container-highest border border-md3-outline-variant/30 text-md3-on-surface text-[11px] font-medium transition-colors cursor-pointer"
+              title="Click to allow browser location credentials for pastes"
+            >
+              <span>📍 Enable Location</span>
+            </button>
+          ) : locationStatus === 'denied' ? (
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-md3-surface-container-high text-md3-outline text-[10px]"
+              title="Location permission denied in browser settings"
+            >
+              <span>📍 Location: Blocked</span>
+            </span>
+          ) : null}
+
           <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span>Pasting as: You (Owner)</span>
@@ -237,11 +281,21 @@ export const App: React.FC = () => {
           isLoading={isLoading}
           onPinToggle={handlePinToggle}
           onDelete={handleDelete}
+          onSelect={(p) => setSelectedDetailPhaste(p)}
           onImageClick={setActiveLightbox}
           onInspect={setSelectedPhasteForModal}
           onToast={showToast}
         />
       </main>
+
+      {/* 4/5th Big Content Modal with 1/5th Context Sidebar (Request 4) */}
+      <PhasteDetailModal
+        phaste={selectedDetailPhaste}
+        isOpen={Boolean(selectedDetailPhaste)}
+        onClose={() => setSelectedDetailPhaste(null)}
+        onPinToggle={handlePinToggle}
+        onToast={showToast}
+      />
 
       {/* Fullscreen Image Lightbox Modal */}
       <ImageLightbox phaste={activeLightbox} onClose={() => setActiveLightbox(null)} />
