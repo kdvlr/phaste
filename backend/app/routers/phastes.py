@@ -185,21 +185,44 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
 async def create_phaste(
     background_tasks: BackgroundTasks,
     request: Request,
-    payload: Optional[PhasteCreate] = None,
-    file: Optional[UploadFile] = File(None),
-    raw_content: Optional[str] = Form(None),
-    kind_form: Optional[str] = Form(None),
-    title_form: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Instant capture endpoint: creates a Phaste immediately (<50ms for text/files,
     synchronous fast-metadata scrape up to 1.5s for links per ADR 0002).
+    Supports both application/json payloads and multipart/form-data uploads.
     """
-    content = payload.content if payload else raw_content
-    kind = payload.kind if payload else kind_form
-    title = payload.title if payload else title_form
-    client_ctx = payload.client_context if payload else None
+    content_type = request.headers.get("content-type", "").lower()
+    content: Optional[str] = None
+    kind: Optional[str] = None
+    title: Optional[str] = None
+    client_ctx: Optional[ClientContext] = None
+    file: Optional[UploadFile] = None
+
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            payload = PhasteCreate.model_validate(body)
+            content = payload.content
+            kind = payload.kind
+            title = payload.title
+            client_ctx = payload.client_context
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
+    else:
+        form = await request.form()
+        raw_file = form.get("file")
+        if isinstance(raw_file, UploadFile):
+            file = raw_file
+        raw_content = form.get("raw_content") or form.get("content")
+        if isinstance(raw_content, str):
+            content = raw_content
+        raw_kind = form.get("kind_form") or form.get("kind")
+        if isinstance(raw_kind, str):
+            kind = raw_kind
+        raw_title = form.get("title_form") or form.get("title")
+        if isinstance(raw_title, str):
+            title = raw_title
 
     # Base metadata context
     metadata_context = {}
