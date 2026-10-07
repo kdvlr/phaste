@@ -17,7 +17,7 @@ from fastapi import (
     Query
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, text, desc
+from sqlalchemy import select, update, delete, func, text, desc, and_, or_
 from app.database import get_db, async_session_factory
 from app.models.phaste import Phaste
 from app.schemas.phaste import (
