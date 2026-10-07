@@ -2,6 +2,38 @@ export type PhasteKind = 'text' | 'richtext' | 'link' | 'image' | 'video';
 export type PhasteStatus = 'ready' | 'processing' | 'fallback_stream' | 'failed';
 
 export interface MetadataContext {
+  author?: {
+    is_owner: boolean;
+    label: string;
+    name: string;
+    source: string;
+    device_name?: string;
+  };
+  network?: {
+    ip?: string;
+    user_agent?: string;
+    is_local?: boolean;
+  };
+  browser?: {
+    browser?: string;
+    browser_name?: string;
+    browser_version?: string;
+    os?: string;
+    device_type?: string;
+    screen?: string;
+    language?: string;
+    timezone?: string;
+    platform?: string;
+  };
+  location?: {
+    city?: string;
+    region?: string;
+    country_code?: string;
+    formatted?: string;
+    latitude?: number;
+    longitude?: number;
+    source?: string;
+  };
   city?: string;
   region?: string;
   country_code?: string;
@@ -12,6 +44,13 @@ export interface MetadataContext {
     user_agent?: string;
     latitude?: number;
     longitude?: number;
+    browser?: string;
+    os?: string;
+    device_type?: string;
+    screen_resolution?: string;
+    language?: string;
+    author_name?: string;
+    is_owner?: boolean;
   };
   exif?: {
     camera_make?: string;

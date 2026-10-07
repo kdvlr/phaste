@@ -9,10 +9,18 @@ class ClientContext(BaseModel):
     timezone: Optional[str] = None
     user_agent: Optional[str] = None
     platform: Optional[str] = None
+    browser: Optional[str] = None
+    browser_version: Optional[str] = None
+    os: Optional[str] = None
+    device_type: Optional[str] = None
+    screen_resolution: Optional[str] = None
     language: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     source_url: Optional[str] = None
+    author_name: Optional[str] = None
+    is_owner: Optional[bool] = None
+    device_name: Optional[str] = None
 
 
 class PhasteCreate(BaseModel):

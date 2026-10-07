@@ -22,7 +22,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({ phaste, onClose })
   if (!phaste || !phaste.media_path) return null;
 
   const imageUrl = getMediaUrl(phaste.media_path);
-  const location = phaste.metadata_context?.location?.formatted_location;
+  const location = phaste.metadata_context?.location?.formatted || phaste.metadata_context?.formatted_location || phaste.metadata_context?.location?.city;
   const camera = phaste.metadata_context?.exif?.camera_model;
 
   const handleCopyOcr = () => {

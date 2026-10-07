@@ -19,9 +19,11 @@ import { Omnibar } from './components/Omnibar';
 import { FilterChips } from './components/FilterChips';
 import { PhasteFeed } from './components/PhasteFeed';
 import { ImageLightbox } from './components/ImageLightbox';
+import { MetadataModal } from './components/MetadataModal';
 import { Snackbar } from './components/Snackbar';
 import { useAmbientCapture } from './hooks/useAmbientCapture';
 import { useEvents } from './hooks/useEvents';
+import { requestAndCacheLocation } from './api';
 
 export const App: React.FC = () => {
   const [phastes, setPhastes] = useState<Phaste[]>([]);
@@ -31,6 +33,7 @@ export const App: React.FC = () => {
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeLightbox, setActiveLightbox] = useState<Phaste | null>(null);
+  const [selectedPhasteForModal, setSelectedPhasteForModal] = useState<Phaste | null>(null);
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
 
   const showToast = useCallback((text: string, type: 'info' | 'success' | 'error' = 'info') => {
@@ -38,6 +41,10 @@ export const App: React.FC = () => {
   }, []);
 
   // 1. Initial & Filtered Data Loading
+  useEffect(() => {
+    requestAndCacheLocation();
+  }, []);
+
   const loadPhastes = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -164,16 +171,21 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Ambient status indicator */}
-        <div className="flex items-center gap-3 text-xs text-md3-on-surface-variant">
+        {/* Ambient status & Author indicator */}
+        <div className="flex items-center gap-2.5 text-xs text-md3-on-surface-variant">
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Pasting as: You (Owner)</span>
+          </span>
+
           {isSubmitting ? (
             <span className="flex items-center gap-1.5 text-md3-primary font-medium">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               <span>Saving in haste...</span>
             </span>
           ) : (
-            <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-md3-outline">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="hidden md:flex items-center gap-1.5 text-[11px] text-md3-outline">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span>Ready for Cmd+V</span>
             </span>
           )}
@@ -226,12 +238,20 @@ export const App: React.FC = () => {
           onPinToggle={handlePinToggle}
           onDelete={handleDelete}
           onImageClick={setActiveLightbox}
+          onInspect={setSelectedPhasteForModal}
           onToast={showToast}
         />
       </main>
 
       {/* Fullscreen Image Lightbox Modal */}
       <ImageLightbox phaste={activeLightbox} onClose={() => setActiveLightbox(null)} />
+
+      {/* Capture Context Inspector Modal */}
+      <MetadataModal
+        phaste={selectedPhasteForModal}
+        isOpen={Boolean(selectedPhasteForModal)}
+        onClose={() => setSelectedPhasteForModal(null)}
+      />
 
       {/* Non-blocking Transient Material 3 Snackbar */}
       <Snackbar message={snackbar} onDismiss={() => setSnackbar(null)} />

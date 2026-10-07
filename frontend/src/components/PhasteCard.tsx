@@ -8,7 +8,8 @@ import {
   FileText,
   AlertCircle,
   Copy,
-  Check
+  Check,
+  Info
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { MetadataBadge } from './MetadataBadge';
@@ -21,6 +22,7 @@ interface PhasteCardProps {
   onPinToggle: (id: string, current: boolean) => void;
   onDelete: (id: string) => void;
   onImageClick: (phaste: Phaste) => void;
+  onInspect: (phaste: Phaste) => void;
   onToast: (msg: string) => void;
 }
 
@@ -29,6 +31,7 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
   onPinToggle,
   onDelete,
   onImageClick,
+  onInspect,
   onToast,
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
@@ -99,6 +102,15 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
             title="Copy public share URL"
           >
             {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Inspect Details */}
+          <button
+            onClick={() => onInspect(phaste)}
+            className="p-1.5 rounded-full text-md3-on-surface-variant hover:text-md3-primary hover:bg-md3-primary/10 transition-colors"
+            title="Inspect captured context (IP, location, browser, raw JSON)"
+          >
+            <Info className="w-3.5 h-3.5" />
           </button>
 
           {/* Delete */}
@@ -196,7 +208,11 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
 
       {/* Card Footer: Metadata Context */}
       <div className="px-4 py-2.5 bg-md3-surface-container-low/40 border-t border-md3-outline-variant/10 mt-2">
-        <MetadataBadge createdAt={phaste.created_at} metadata={phaste.metadata_context || {}} />
+        <MetadataBadge
+          createdAt={phaste.created_at}
+          metadata={phaste.metadata_context || {}}
+          onInspect={() => onInspect(phaste)}
+        />
       </div>
     </div>
   );

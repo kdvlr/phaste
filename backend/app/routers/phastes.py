@@ -181,6 +181,159 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                 pass
 
 
+def extract_client_network_info(request: Request) -> Dict[str, Any]:
+    raw_xff = request.headers.get("x-forwarded-for")
+    raw_real_ip = request.headers.get("x-real-ip") or request.headers.get("cf-connecting-ip")
+
+    if raw_real_ip:
+        ip = raw_real_ip.strip()
+    elif raw_xff:
+        ip = raw_xff.split(",")[0].strip()
+    elif request.client:
+        ip = request.client.host
+    else:
+        ip = "127.0.0.1"
+
+    user_agent = request.headers.get("user-agent", "")
+
+    is_local = (
+        ip.startswith("192.168.")
+        or ip.startswith("10.")
+        or ip.startswith("172.16.")
+        or ip.startswith("172.17.")
+        or ip.startswith("172.18.")
+        or ip.startswith("172.19.")
+        or ip.startswith("172.2")
+        or ip.startswith("172.3")
+        or ip == "127.0.0.1"
+        or ip == "::1"
+        or ip == "localhost"
+    )
+
+    return {
+        "ip": ip,
+        "user_agent": user_agent,
+        "is_local": is_local,
+    }
+
+
+def parse_user_agent_details(ua_str: str) -> Dict[str, Any]:
+    if not ua_str:
+        return {
+            "browser": "Unknown",
+            "browser_name": "Unknown",
+            "browser_version": "",
+            "os": "Unknown",
+            "device_type": "desktop"
+        }
+
+    ua = ua_str.lower()
+    os_name = "Unknown"
+    device_type = "desktop"
+
+    # OS detection
+    if "iphone" in ua or "ipad" in ua:
+        os_name = "iOS"
+        device_type = "mobile" if "iphone" in ua else "tablet"
+    elif "android" in ua:
+        os_name = "Android"
+        device_type = "tablet" if "tablet" in ua else "mobile"
+    elif "mac os" in ua or "macintosh" in ua:
+        os_name = "macOS"
+    elif "windows" in ua:
+        os_name = "Windows"
+    elif "linux" in ua:
+        os_name = "Linux"
+    elif "cros" in ua:
+        os_name = "ChromeOS"
+
+    # Browser detection
+    browser = "Unknown"
+    version = ""
+
+    if "edg/" in ua or "edge/" in ua:
+        browser = "Edge"
+        m = re.search(r'edg[e]?/([\d.]+)', ua)
+        if m: version = m.group(1).split('.')[0]
+    elif "chrome/" in ua and "chromium" not in ua and "crios/" not in ua:
+        browser = "Chrome"
+        m = re.search(r'chrome/([\d.]+)', ua)
+        if m: version = m.group(1).split('.')[0]
+    elif "crios/" in ua:
+        browser = "Chrome (iOS)"
+        m = re.search(r'crios/([\d.]+)', ua)
+        if m: version = m.group(1).split('.')[0]
+    elif "firefox/" in ua or "fxios/" in ua:
+        browser = "Firefox"
+        m = re.search(r'(firefox|fxios)/([\d.]+)', ua)
+        if m: version = m.group(2).split('.')[0]
+    elif "safari/" in ua and "version/" in ua:
+        browser = "Safari"
+        m = re.search(r'version/([\d.]+)', ua)
+        if m: version = m.group(1).split('.')[0]
+    elif "curl/" in ua:
+        browser = "cURL"
+        m = re.search(r'curl/([\d.]+)', ua)
+        if m: version = m.group(1)
+        device_type = "server"
+    elif "python" in ua or "httpx" in ua:
+        browser = "Python API"
+        device_type = "server"
+
+    return {
+        "browser": f"{browser} {version}".strip() if version else browser,
+        "browser_name": browser,
+        "browser_version": version,
+        "os": os_name,
+        "device_type": device_type
+    }
+
+
+def determine_author_identity(
+    request: Request,
+    client_ctx: Optional[ClientContext],
+    network_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    has_otp_session = bool(request.headers.get("x-session-id"))
+    auth_header = request.headers.get("authorization", "")
+    has_api_token = auth_header.startswith("Bearer ") and len(auth_header) > 10
+    is_local_network = network_info.get("is_local", False)
+    client_asserted_owner = client_ctx.is_owner if (client_ctx and client_ctx.is_owner is not None) else None
+
+    if has_otp_session:
+        is_owner = True
+        label = "You"
+        source = "otp_session"
+    elif has_api_token:
+        is_owner = True
+        label = "You (API Token)"
+        source = "api_token"
+    elif is_local_network and (client_asserted_owner is not False):
+        is_owner = True
+        label = "You"
+        source = "local_network"
+    elif client_asserted_owner is True:
+        is_owner = True
+        label = client_ctx.author_name or "You"
+        source = "client_device"
+    elif client_asserted_owner is False:
+        is_owner = False
+        label = client_ctx.author_name or "Someone else (Guest)"
+        source = "guest"
+    else:
+        is_owner = False
+        label = "Someone else (Guest)"
+        source = "external_guest"
+
+    return {
+        "is_owner": is_owner,
+        "label": label,
+        "name": (client_ctx.author_name if (client_ctx and client_ctx.author_name) else ("You" if is_owner else "Someone else")),
+        "source": source,
+        "device_name": client_ctx.device_name if client_ctx else None,
+    }
+
+
 @router.post("", response_model=PhasteResponse, status_code=201)
 async def create_phaste(
     background_tasks: BackgroundTasks,
@@ -232,8 +385,27 @@ async def create_phaste(
             except Exception:
                 pass
 
-    # Base metadata context
-    metadata_context = {}
+    # Extract rich network, browser, and author identity
+    network_info = extract_client_network_info(request)
+    ua_info = parse_user_agent_details(network_info["user_agent"])
+    author_info = determine_author_identity(request, client_ctx, network_info)
+
+    metadata_context: Dict[str, Any] = {
+        "author": author_info,
+        "network": network_info,
+        "browser": {
+            "browser": (client_ctx.browser if client_ctx and client_ctx.browser else ua_info["browser"]),
+            "browser_name": (client_ctx.browser if client_ctx and client_ctx.browser else ua_info["browser_name"]),
+            "browser_version": (client_ctx.browser_version if client_ctx and client_ctx.browser_version else ua_info["browser_version"]),
+            "os": (client_ctx.os if client_ctx and client_ctx.os else ua_info["os"]),
+            "device_type": (client_ctx.device_type if client_ctx and client_ctx.device_type else ua_info["device_type"]),
+            "screen": client_ctx.screen_resolution if client_ctx else None,
+            "language": client_ctx.language if client_ctx else None,
+            "timezone": client_ctx.timezone if client_ctx else None,
+            "platform": client_ctx.platform if client_ctx else None,
+        }
+    }
+
     if client_ctx:
         metadata_context["client"] = client_ctx.model_dump(exclude_none=True)
         if client_ctx.latitude and client_ctx.longitude:
@@ -242,10 +414,23 @@ async def create_phaste(
             metadata_context["city"] = geo.get("city")
             metadata_context["country_code"] = geo.get("country_code")
 
-    # Client IP and User-Agent
-    client_ip = request.headers.get("x-forwarded-for") or request.client.host if request.client else None
-    user_agent = request.headers.get("user-agent")
-    metadata_context["network"] = {"ip": client_ip, "user_agent": user_agent}
+    # If no GPS location was extracted, populate network-level location
+    if "location" not in metadata_context:
+        if network_info["is_local"]:
+            metadata_context["location"] = {
+                "city": "Home LAN",
+                "region": "Local Network",
+                "country_code": "LAN",
+                "formatted": f"Local Network ({network_info['ip']})",
+                "source": "lan_ip",
+            }
+            metadata_context["city"] = "Home LAN"
+            metadata_context["country_code"] = "LAN"
+        else:
+            metadata_context["location"] = {
+                "formatted": f"IP: {network_info['ip']}",
+                "source": "remote_ip",
+            }
 
     now_year = datetime.now(timezone.utc).strftime("%Y")
     now_month = datetime.now(timezone.utc).strftime("%m")

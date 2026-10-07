@@ -2,12 +2,100 @@ import { Phaste, SearchResponse } from './types';
 
 const API_BASE = '/api';
 
+function detectBrowserAndOS() {
+  const ua = navigator.userAgent.toLowerCase();
+  let browser = 'Unknown';
+  let browserVersion = '';
+  let os = 'Unknown';
+  let deviceType = 'desktop';
+
+  // OS detection
+  if (/iphone|ipad|ipod/.test(ua)) {
+    os = 'iOS';
+    deviceType = /ipad/.test(ua) ? 'tablet' : 'mobile';
+  } else if (/android/.test(ua)) {
+    os = 'Android';
+    deviceType = /tablet/.test(ua) ? 'tablet' : 'mobile';
+  } else if (/mac os|macintosh/.test(ua)) {
+    os = 'macOS';
+  } else if (/windows/.test(ua)) {
+    os = 'Windows';
+  } else if (/linux/.test(ua)) {
+    os = 'Linux';
+  }
+
+  // Browser detection
+  if (/edg\//.test(ua)) {
+    browser = 'Edge';
+    browserVersion = ua.match(/edg\/([\d.]+)/)?.[1] || '';
+  } else if (/chrome\//.test(ua) && !/chromium|crios/.test(ua)) {
+    browser = 'Chrome';
+    browserVersion = ua.match(/chrome\/([\d.]+)/)?.[1] || '';
+  } else if (/crios\//.test(ua)) {
+    browser = 'Chrome (iOS)';
+    browserVersion = ua.match(/crios\/([\d.]+)/)?.[1] || '';
+  } else if (/firefox\/|fxios\//.test(ua)) {
+    browser = 'Firefox';
+    browserVersion = ua.match(/(firefox|fxios)\/([\d.]+)/)?.[2] || '';
+  } else if (/safari\//.test(ua) && /version\//.test(ua)) {
+    browser = 'Safari';
+    browserVersion = ua.match(/version\/([\d.]+)/)?.[1] || '';
+  }
+
+  return { browser, browserVersion, os, deviceType };
+}
+
+let cachedCoords: { latitude: number; longitude: number } | null = null;
+
+export function requestAndCacheLocation() {
+  if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        cachedCoords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+        try {
+          sessionStorage.setItem('phaste_cached_coords', JSON.stringify(cachedCoords));
+        } catch (_) {}
+      },
+      () => {},
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+    );
+  }
+}
+
+try {
+  const saved = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('phaste_cached_coords') : null;
+  if (saved) cachedCoords = JSON.parse(saved);
+} catch (_) {}
+
 export function getClientContext() {
+  const { browser, browserVersion, os, deviceType } = detectBrowserAndOS();
+  const screenResolution = typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : undefined;
+
+  const authorName = typeof localStorage !== 'undefined' ? (localStorage.getItem('phaste_author_name') || 'You') : 'You';
+  const isOwner = typeof localStorage !== 'undefined' ? (localStorage.getItem('phaste_is_owner') !== 'false') : true;
+  const deviceName = typeof localStorage !== 'undefined' ? (localStorage.getItem('phaste_device_name') || (
+    os === 'macOS' ? 'Mac' : os === 'iOS' ? 'iPhone' : os === 'Android' ? 'Android Device' : 'Desktop'
+  )) : 'Desktop';
+
   return {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     platform: navigator.platform,
     user_agent: navigator.userAgent,
     language: navigator.language,
+    browser,
+    browser_version: browserVersion,
+    os,
+    device_type: deviceType,
+    screen_resolution: screenResolution,
+    author_name: authorName,
+    is_owner: isOwner,
+    device_name: deviceName,
+    client_timestamp: new Date().toISOString(),
+    latitude: cachedCoords?.latitude,
+    longitude: cachedCoords?.longitude,
   };
 }
 
@@ -60,6 +148,7 @@ export async function uploadPhasteFile(file: File, title?: string): Promise<Phas
   const formData = new FormData();
   formData.append('file', file);
   if (title) formData.append('title_form', title);
+  formData.append('client_context', JSON.stringify(getClientContext()));
 
   const res = await fetch(`${API_BASE}/phastes`, {
     method: 'POST',
