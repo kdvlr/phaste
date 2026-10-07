@@ -82,14 +82,14 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder="Search phastes, images, locations, or paste anywhere..."
-          className="w-full bg-transparent text-sm text-md3-on-surface placeholder-md3-on-surface-variant/60 focus:outline-none"
+          className="w-full bg-transparent text-base sm:text-sm font-normal text-md3-on-surface placeholder-md3-on-surface-variant/75 focus:outline-none"
         />
 
         {/* Clear query */}
         {searchQuery && (
           <button
             onClick={() => onSearchChange('')}
-            className="p-1 rounded-full text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container transition"
+            className="p-1.5 rounded-full text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -97,7 +97,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
 
         {/* Shortcut Badge */}
         {!searchQuery && (
-          <div className="hidden sm:flex items-center gap-1 text-[11px] font-mono text-md3-outline bg-md3-surface-container-lowest px-2 py-0.5 rounded border border-md3-outline-variant/20">
+          <div className="hidden sm:flex items-center gap-1 text-xs font-mono font-medium text-md3-on-surface-variant bg-md3-surface-container-lowest px-2 py-0.5 rounded border border-md3-outline-variant/30">
             <span>⌘K</span>
           </div>
         )}
@@ -113,7 +113,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-1.5 rounded-full text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container transition"
+          className="p-2 rounded-full text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container transition cursor-pointer"
           title="Upload image or video file"
         >
           <Upload className="w-4 h-4" />
@@ -122,22 +122,22 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         {/* Quick Action: Paste from Clipboard */}
         <button
           onClick={handlePasteClipboard}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-md3-primary text-md3-on-primary text-xs font-medium hover:brightness-105 active:scale-95 transition-all shadow-md3-1"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-md3-primary text-md3-on-primary text-xs font-semibold hover:brightness-105 active:scale-95 transition-all shadow-md3-1 cursor-pointer"
           title="Paste from clipboard immediately"
         >
-          <Clipboard className="w-3.5 h-3.5" />
+          <Clipboard className="w-3.5 h-3.5 stroke-[2.5]" />
           <span className="hidden sm:inline">Paste</span>
         </button>
       </div>
 
       {/* Helper search syntax hints */}
       {isFocused && (
-        <div className="mt-2 px-4 flex flex-wrap gap-2 text-[11px] text-md3-on-surface-variant/70 animate-in fade-in duration-150">
+        <div className="mt-2.5 px-4 flex flex-wrap items-center gap-2 text-xs font-medium text-md3-on-surface-variant animate-in fade-in duration-150">
           <span>Search hints:</span>
-          <span className="font-mono bg-md3-surface-container-low px-1.5 py-0.5 rounded border border-md3-outline-variant/20">kind:image</span>
-          <span className="font-mono bg-md3-surface-container-low px-1.5 py-0.5 rounded border border-md3-outline-variant/20">city:Chicago</span>
-          <span className="font-mono bg-md3-surface-container-low px-1.5 py-0.5 rounded border border-md3-outline-variant/20">kind:video</span>
-          <span>or plain English description</span>
+          <span className="font-mono bg-md3-surface-container-low px-2 py-0.5 rounded border border-md3-outline-variant/30 text-md3-on-surface">kind:image</span>
+          <span className="font-mono bg-md3-surface-container-low px-2 py-0.5 rounded border border-md3-outline-variant/30 text-md3-on-surface">city:Chicago</span>
+          <span className="font-mono bg-md3-surface-container-low px-2 py-0.5 rounded border border-md3-outline-variant/30 text-md3-on-surface">kind:video</span>
+          <span>or plain natural language description</span>
         </div>
       )}
     </div>

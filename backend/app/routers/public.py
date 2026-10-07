@@ -111,33 +111,76 @@ def render_public_html(item: Phaste, req: Request) -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title} — Phaste</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23D0BCFF'><path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z'/></svg>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236750A4'><path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z'/></svg>" />
     <style>
         :root {{
+            --surface: #FAF8FD;
+            --surface-container-lowest: #FFFFFF;
+            --surface-container-low: #F4F2F7;
+            --surface-container: #EEEBF1;
+            --surface-container-high: #E8E5EC;
+            --surface-container-highest: #E2DFE6;
+            --on-surface: #1C1B1F;
+            --on-surface-variant: #49454E;
+            --primary: #6750A4;
+            --on-primary: #FFFFFF;
+            --primary-container: #EADDFF;
+            --on-primary-container: #21005D;
+            --outline: #79747E;
+            --outline-variant: #CAC4D0;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }}
+        @media (prefers-color-scheme: dark) {{
+            :root:not(.light) {{
+                --surface: #141218;
+                --surface-container-lowest: #0F0D13;
+                --surface-container-low: #1D1B20;
+                --surface-container: #211F26;
+                --surface-container-high: #2B2930;
+                --surface-container-highest: #36343B;
+                --on-surface: #E6E1E9;
+                --on-surface-variant: #CAC4D0;
+                --primary: #D0BCFF;
+                --on-primary: #381E72;
+                --primary-container: #4F378B;
+                --on-primary-container: #EADDFF;
+                --outline: #938F99;
+                --outline-variant: #49454F;
+                --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+            }}
+        }}
+        html.dark {{
             --surface: #141218;
-            --surface-container: #1D1B20;
+            --surface-container-lowest: #0F0D13;
+            --surface-container-low: #1D1B20;
+            --surface-container: #211F26;
             --surface-container-high: #2B2930;
             --surface-container-highest: #36343B;
-            --on-surface: #E6E0E9;
+            --on-surface: #E6E1E9;
             --on-surface-variant: #CAC4D0;
             --primary: #D0BCFF;
             --on-primary: #381E72;
             --primary-container: #4F378B;
+            --on-primary-container: #EADDFF;
             --outline: #938F99;
             --outline-variant: #49454F;
+            --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
         }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
             background-color: var(--surface);
             color: var(--on-surface);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, Roboto, "Segoe UI", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             padding: 1.5rem 1rem;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }}
         .container {{
-            max-width: 960px;
+            max-width: 980px;
             width: 100%;
             margin: 0 auto;
             flex: 1;
@@ -147,73 +190,104 @@ def render_public_html(item: Phaste, req: Request) -> str:
             align-items: center;
             justify-content: space-between;
             margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
+            padding-bottom: 1.25rem;
             border-bottom: 1px solid var(--outline-variant);
+            gap: 1rem;
+            flex-wrap: wrap;
         }}
         .logo-group {{
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.85rem;
+            min-width: 0;
         }}
         .logo-badge {{
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
             background: var(--primary-container);
-            color: var(--primary);
+            color: var(--on-primary-container);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-shrink: 0;
         }}
         .title-group h1 {{
-            font-size: 1.15rem;
+            font-size: 1.25rem;
             font-weight: 600;
             color: var(--on-surface);
+            line-height: 1.3;
         }}
         .meta-sub {{
-            font-size: 0.75rem;
+            font-size: 0.85rem;
             color: var(--on-surface-variant);
             display: flex;
-            gap: 0.5rem;
+            gap: 0.6rem;
             align-items: center;
-            margin-top: 0.2rem;
+            margin-top: 0.3rem;
+            flex-wrap: wrap;
         }}
         .badge {{
             display: inline-block;
-            padding: 0.15rem 0.5rem;
+            padding: 0.2rem 0.65rem;
             border-radius: 9999px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            background: var(--surface-container-highest);
-            color: var(--primary);
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: var(--primary-container);
+            color: var(--on-primary-container);
             text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }}
+        .header-actions {{
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }}
+        .theme-btn {{
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 1px solid var(--outline-variant);
+            background: var(--surface-container-high);
+            color: var(--on-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.15s ease;
+        }}
+        .theme-btn:hover {{
+            background: var(--surface-container-highest);
         }}
         .code-card {{
-            background: var(--surface-container);
+            background: var(--surface-container-lowest);
             border: 1px solid var(--outline-variant);
-            border-radius: 16px;
+            border-radius: 18px;
             overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            box-shadow: var(--card-shadow);
         }}
         .code-header {{
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.6rem 1rem;
+            padding: 0.75rem 1.25rem;
             background: var(--surface-container-high);
             border-bottom: 1px solid var(--outline-variant);
         }}
         .code-info {{
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.75rem;
+            font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            font-weight: 500;
             color: var(--on-surface-variant);
         }}
         .code-content {{
-            padding: 1rem;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.85rem;
-            line-height: 1.6;
+            padding: 1.25rem;
+            font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+            font-size: 0.95rem;
+            line-height: 1.65;
             overflow-x: auto;
             color: var(--on-surface);
             white-space: pre-wrap;
@@ -223,53 +297,57 @@ def render_public_html(item: Phaste, req: Request) -> str:
             cursor: pointer;
             border: none;
             border-radius: 9999px;
-            padding: 0.45rem 1rem;
-            font-size: 0.8rem;
-            font-weight: 500;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.85rem;
+            font-weight: 600;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.5rem;
             transition: all 0.15s ease;
+            min-height: 38px;
         }}
         .btn-primary {{
             background: var(--primary);
             color: var(--on-primary);
         }}
-        .btn-primary:hover {{ opacity: 0.9; }}
+        .btn-primary:hover {{ opacity: 0.92; }}
         .btn-secondary {{
-            background: var(--surface-container-highest);
+            background: var(--surface-container-high);
             color: var(--on-surface);
-        }}
-        .btn-secondary:hover {{ background: var(--outline-variant); }}
-        .media-container {{
-            background: var(--surface-container);
             border: 1px solid var(--outline-variant);
-            border-radius: 16px;
-            padding: 1.25rem;
+        }}
+        .btn-secondary:hover {{ background: var(--surface-container-highest); }}
+        .media-container {{
+            background: var(--surface-container-lowest);
+            border: 1px solid var(--outline-variant);
+            border-radius: 18px;
+            padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.25rem;
             align-items: center;
+            box-shadow: var(--card-shadow);
         }}
         .image-wrapper {{
             max-width: 100%;
             max-height: 75vh;
             overflow: hidden;
-            border-radius: 8px;
+            border-radius: 12px;
             display: flex;
             justify-content: center;
+            background: var(--surface-container);
         }}
         .public-image {{
             max-width: 100%;
             max-height: 75vh;
             object-fit: contain;
-            border-radius: 8px;
+            border-radius: 12px;
         }}
         .public-video {{
             max-width: 100%;
             max-height: 70vh;
-            border-radius: 8px;
+            border-radius: 12px;
             background: #000;
         }}
         .media-actions {{
@@ -277,45 +355,48 @@ def render_public_html(item: Phaste, req: Request) -> str:
             gap: 0.75rem;
             width: 100%;
             justify-content: flex-end;
+            flex-wrap: wrap;
         }}
         .ocr-box {{
             width: 100%;
-            padding: 0.85rem;
-            border-radius: 8px;
-            background: var(--surface-container-high);
-            border: 1px solid var(--outline-variant);
-            font-size: 0.8rem;
-        }}
-        .ocr-title {{ font-weight: 600; color: var(--primary); margin-bottom: 0.35rem; }}
-        .ocr-content {{ font-family: monospace; white-space: pre-wrap; color: var(--on-surface-variant); }}
-        .link-card {{
+            padding: 1rem;
+            border-radius: 12px;
             background: var(--surface-container);
             border: 1px solid var(--outline-variant);
-            border-radius: 16px;
+            font-size: 0.85rem;
+        }}
+        .ocr-title {{ font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; font-size: 0.85rem; }}
+        .ocr-content {{ font-family: ui-monospace, "SF Mono", monospace; white-space: pre-wrap; color: var(--on-surface); line-height: 1.6; }}
+        .link-card {{
+            background: var(--surface-container-lowest);
+            border: 1px solid var(--outline-variant);
+            border-radius: 18px;
             overflow: hidden;
+            box-shadow: var(--card-shadow);
         }}
         .og-banner {{
             width: 100%;
-            max-height: 320px;
+            max-height: 360px;
             object-fit: cover;
             border-bottom: 1px solid var(--outline-variant);
         }}
-        .link-content {{ padding: 1.25rem; }}
+        .link-content {{ padding: 1.5rem; }}
         .link-title {{
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 1.2rem;
+            font-weight: 700;
             color: var(--primary);
             text-decoration: none;
+            line-height: 1.35;
         }}
         .link-title:hover {{ text-decoration: underline; }}
-        .link-desc {{ font-size: 0.85rem; color: var(--on-surface-variant); margin: 0.5rem 0; line-height: 1.5; }}
-        .link-url {{ font-size: 0.75rem; color: var(--outline); word-break: break-all; }}
+        .link-desc {{ font-size: 0.95rem; color: var(--on-surface-variant); margin: 0.75rem 0; line-height: 1.6; }}
+        .link-url {{ font-family: ui-monospace, "SF Mono", monospace; font-size: 0.85rem; color: var(--outline); word-break: break-all; margin-top: 0.5rem; }}
         footer {{
-            margin-top: 2rem;
+            margin-top: 2.5rem;
             text-align: center;
-            font-size: 0.75rem;
+            font-size: 0.85rem;
             color: var(--outline);
-            padding-top: 1rem;
+            padding-top: 1.25rem;
             border-top: 1px solid var(--outline-variant);
         }}
         .toast {{
@@ -325,11 +406,11 @@ def render_public_html(item: Phaste, req: Request) -> str:
             transform: translateX(-50%);
             background: var(--primary);
             color: var(--on-primary);
-            padding: 0.5rem 1.25rem;
+            padding: 0.6rem 1.5rem;
             border-radius: 9999px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
             display: none;
             z-index: 100;
         }}
@@ -350,7 +431,8 @@ def render_public_html(item: Phaste, req: Request) -> str:
                     </div>
                 </div>
             </div>
-            <div>
+            <div class="header-actions">
+                <button id="theme-btn" class="theme-btn" onclick="toggleTheme()" title="Toggle Light / Dark mode">&#9728;&#65039;</button>
                 <button class="btn btn-primary" onclick="copyContent()">Copy Content</button>
             </div>
         </header>
@@ -367,6 +449,41 @@ def render_public_html(item: Phaste, req: Request) -> str:
     <div id="toast" class="toast">Content copied to clipboard!</div>
 
     <script>
+        // Initialize theme preference from localStorage or system
+        (function() {{
+            const saved = localStorage.getItem('phaste_public_theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            if (theme === 'dark') {{
+                document.documentElement.classList.add('dark');
+            }} else {{
+                document.documentElement.classList.add('light');
+            }}
+            updateThemeIcon(theme);
+        }})();
+
+        function updateThemeIcon(t) {{
+            const btn = document.getElementById('theme-btn');
+            if (btn) {{
+                btn.innerHTML = t === 'dark' ? '&#127769;' : '&#9728;&#65039;';
+            }}
+        }}
+
+        function toggleTheme() {{
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {{
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                localStorage.setItem('phaste_public_theme', 'light');
+                updateThemeIcon('light');
+            }} else {{
+                document.documentElement.classList.remove('light');
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('phaste_public_theme', 'dark');
+                updateThemeIcon('dark');
+            }}
+        }}
+
         function showToast(text) {{
             const t = document.getElementById('toast');
             if (text) t.innerText = text;

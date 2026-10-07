@@ -38,56 +38,56 @@ export const MetadataBadge: React.FC<MetadataBadgeProps> = ({ createdAt, metadat
   const isMobile = browser?.device_type === 'mobile' || /iphone|ipad|android/i.test(client?.platform || '');
 
   return (
-    <div className="flex items-center justify-between gap-2 text-[11px] text-md3-on-surface-variant/80 font-normal">
+    <div className="flex items-center justify-between gap-2 text-xs text-md3-on-surface-variant font-medium">
       {/* Left items: Chips */}
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 min-w-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
         {/* Author Chip */}
         <span
-          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-medium text-[10px] ${
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
             isOwner
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-              : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+              ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+              : 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30'
           }`}
           title={isOwner ? 'Captured by You (Owner)' : 'Captured by Guest / Someone else'}
         >
-          {isOwner ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+          {isOwner ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
           <span>{isOwner ? 'You' : 'Guest'}</span>
         </span>
 
         {/* Time */}
-        <span className="flex items-center gap-1" title={`${format(dateObj, 'PPpp')} (${timeAgo})`}>
-          <Clock className="w-3 h-3 text-md3-outline flex-shrink-0" />
+        <span className="flex items-center gap-1 text-md3-on-surface-variant" title={`${format(dateObj, 'PPpp')} (${timeAgo})`}>
+          <Clock className="w-3.5 h-3.5 text-md3-outline flex-shrink-0" />
           <span className="truncate">{formattedTime}</span>
         </span>
 
         {/* IP Address */}
         {ip && (
           <span
-            className="flex items-center gap-1 font-mono text-[10px] text-md3-on-surface-variant/90 bg-md3-surface-container-highest px-1.5 py-0.5 rounded"
+            className="flex items-center gap-1 font-mono text-xs text-md3-on-surface bg-md3-surface-container-highest px-2 py-0.5 rounded border border-md3-outline-variant/30 font-medium"
             title={`Client IP: ${ip} (${network?.is_local ? 'Local LAN' : 'External'})`}
           >
-            <Globe className="w-2.5 h-2.5 text-md3-outline flex-shrink-0" />
+            <Globe className="w-3 h-3 text-md3-outline flex-shrink-0" />
             <span>{ip}</span>
           </span>
         )}
 
         {/* Location */}
         {locName && (
-          <span className="flex items-center gap-1 text-md3-primary" title={`Resolved Location: ${locName}`}>
-            <MapPin className="w-3 h-3 text-md3-primary flex-shrink-0" />
-            <span className="truncate max-w-[130px]">{locName}</span>
+          <span className="flex items-center gap-1 text-md3-primary font-medium" title={`Resolved Location: ${locName}`}>
+            <MapPin className="w-3.5 h-3.5 text-md3-primary flex-shrink-0" />
+            <span className="truncate max-w-[140px]">{locName}</span>
           </span>
         )}
 
         {/* Browser & OS */}
         {(browserName || osName) && (
-          <span className="flex items-center gap-1" title={`${browserName || 'Browser'} on ${osName || 'OS'}`}>
+          <span className="flex items-center gap-1 text-md3-on-surface-variant" title={`${browserName || 'Browser'} on ${osName || 'OS'}`}>
             {isMobile ? (
-              <Smartphone className="w-3 h-3 text-md3-outline flex-shrink-0" />
+              <Smartphone className="w-3.5 h-3.5 text-md3-outline flex-shrink-0" />
             ) : (
-              <Laptop className="w-3 h-3 text-md3-outline flex-shrink-0" />
+              <Laptop className="w-3.5 h-3.5 text-md3-outline flex-shrink-0" />
             )}
-            <span className="truncate max-w-[100px]">
+            <span className="truncate max-w-[120px]">
               {browserName || osName}
             </span>
           </span>
@@ -101,10 +101,10 @@ export const MetadataBadge: React.FC<MetadataBadgeProps> = ({ createdAt, metadat
             e.stopPropagation();
             onInspect();
           }}
-          className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-md3-surface-container-highest hover:bg-md3-outline-variant/30 text-md3-primary hover:text-md3-on-surface text-[10px] font-medium transition-colors"
+          className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-md3-surface-container-highest hover:bg-md3-primary hover:text-md3-on-primary text-md3-primary text-xs font-semibold transition-colors cursor-pointer"
           title="Inspect full captured metadata & network details"
         >
-          <Info className="w-3 h-3" />
+          <Info className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Details</span>
         </button>
       )}

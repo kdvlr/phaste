@@ -141,7 +141,7 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                   </div>
                   <div>
                     <span className="text-md3-on-surface-variant block mb-0.5">Authentication Source</span>
-                    <span className="text-md3-on-surface font-mono bg-md3-surface-container-highest px-2 py-0.5 rounded text-[11px]">
+                    <span className="text-md3-on-surface font-mono bg-md3-surface-container-highest px-2 py-0.5 rounded text-xs">
                       {author?.source || (network?.is_local ? 'local_network' : 'anonymous')}
                     </span>
                   </div>
@@ -163,9 +163,9 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                   </div>
                   <button
                     onClick={() => copyToClipboard(clientIp, 'ip')}
-                    className="flex items-center gap-1 text-[11px] text-md3-primary hover:underline font-mono"
+                    className="flex items-center gap-1 text-xs text-md3-primary hover:underline font-mono"
                   >
-                    {copiedKey === 'ip' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    {copiedKey === 'ip' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedKey === 'ip' ? 'Copied' : 'Copy IP'}</span>
                   </button>
                 </div>
@@ -186,13 +186,13 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                     <span className="text-md3-on-surface-variant">User-Agent Header</span>
                     <button
                       onClick={() => copyToClipboard(userAgent, 'ua')}
-                      className="text-[11px] text-md3-primary hover:underline flex items-center gap-1"
+                      className="text-xs text-md3-primary hover:underline flex items-center gap-1"
                     >
-                      {copiedKey === 'ua' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      {copiedKey === 'ua' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedKey === 'ua' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
-                  <div className="p-2 rounded bg-md3-surface-container-highest font-mono text-[11px] text-md3-on-surface-variant break-all leading-relaxed select-all">
+                  <div className="p-2.5 rounded bg-md3-surface-container-highest font-mono text-xs text-md3-on-surface-variant break-all leading-relaxed select-all">
                     {userAgent}
                   </div>
                 </div>
@@ -210,10 +210,10 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                       href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[11px] text-md3-primary hover:underline"
+                      className="flex items-center gap-1 text-xs text-md3-primary hover:underline"
                     >
                       <span>View Map</span>
-                      <ExternalLink className="w-3 h-3" />
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
                 </div>
@@ -237,14 +237,14 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                   {lat && lon && (
                     <div className="sm:col-span-2">
                       <span className="text-md3-on-surface-variant block mb-0.5">GPS Coordinates</span>
-                      <span className="text-md3-on-surface font-mono text-[11px]">
+                      <span className="text-md3-on-surface font-mono text-xs">
                         {lat.toFixed(5)}°, {lon.toFixed(5)}°
                       </span>
                     </div>
                   )}
                   <div>
                     <span className="text-md3-on-surface-variant block mb-0.5">Geocoding Source</span>
-                    <span className="text-md3-on-surface font-mono text-[11px] bg-md3-surface-container-highest px-2 py-0.5 rounded">
+                    <span className="text-md3-on-surface font-mono text-xs bg-md3-surface-container-highest px-2 py-0.5 rounded">
                       {location?.source || (network?.is_local ? 'lan_ip' : 'unknown')}
                     </span>
                   </div>
@@ -300,7 +300,7 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                   </div>
                   <div>
                     <span className="text-md3-on-surface-variant block mb-0.5">UTC Timestamp</span>
-                    <span className="text-md3-on-surface font-mono text-[11px]">{phaste.created_at}</span>
+                    <span className="text-md3-on-surface font-mono text-xs">{phaste.created_at}</span>
                   </div>
                 </div>
               </div>
@@ -316,22 +316,22 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                     {phaste.ocr_transcript && (
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-md3-on-surface-variant">OCR Extracted Transcript</span>
+                          <span className="text-md3-on-surface-variant font-medium">OCR Extracted Transcript</span>
                           <button
                             onClick={() => copyToClipboard(phaste.ocr_transcript || '', 'ocr')}
-                            className="text-[11px] text-md3-primary hover:underline flex items-center gap-1"
+                            className="text-xs text-md3-primary hover:underline flex items-center gap-1 font-medium"
                           >
-                            {copiedKey === 'ocr' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            {copiedKey === 'ocr' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                             <span>{copiedKey === 'ocr' ? 'Copied' : 'Copy'}</span>
                           </button>
                         </div>
-                        <div className="p-2.5 rounded bg-md3-surface-container-highest font-mono text-[11px] text-md3-on-surface select-all leading-relaxed max-h-32 overflow-y-auto">
+                        <div className="p-2.5 rounded bg-md3-surface-container-highest font-mono text-xs text-md3-on-surface select-all leading-relaxed max-h-32 overflow-y-auto">
                           {phaste.ocr_transcript}
                         </div>
                       </div>
                     )}
                     {exif && Object.keys(exif).length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                         {exif.camera_make && (
                           <div>
                             <span className="text-md3-on-surface-variant block">Make</span>
@@ -383,12 +383,12 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
 
         {/* Modal Footer */}
         <div className="px-6 py-3 border-t border-md3-outline-variant/15 bg-md3-surface-container-high/40 flex items-center justify-between">
-          <span className="text-[11px] text-md3-on-surface-variant font-mono">
+          <span className="text-xs text-md3-on-surface-variant font-mono">
             ID: {phaste.id}
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-full bg-md3-surface-container-highest text-md3-on-surface hover:bg-md3-outline-variant/20 text-xs font-medium transition-colors"
+            className="px-4 py-1.5 rounded-full bg-md3-surface-container-highest text-md3-on-surface hover:bg-md3-outline-variant/20 text-xs font-semibold transition-colors"
           >
             Close
           </button>

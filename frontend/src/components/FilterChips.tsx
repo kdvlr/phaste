@@ -35,30 +35,30 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
               if (showPinnedOnly) onTogglePinned();
               onSelectKind(id);
             }}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-150 border cursor-pointer select-none ${
               isSelected
-                ? 'bg-md3-primary-container text-md3-on-primary-container border-transparent shadow-md3-1'
+                ? 'bg-md3-primary text-md3-on-primary border-transparent shadow-sm'
                 : 'bg-md3-surface-container-low text-md3-on-surface-variant border-md3-outline-variant/30 hover:bg-md3-surface-container hover:text-md3-on-surface'
             }`}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className="w-4 h-4" />
             <span>{label}</span>
           </button>
         );
       })}
 
-      <div className="h-4 w-[1px] bg-md3-outline-variant/30 mx-1" />
+      <div className="h-5 w-[1px] bg-md3-outline-variant/30 mx-1 shrink-0" />
 
       {/* Pinned filter toggle */}
       <button
         onClick={onTogglePinned}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
+        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-150 border cursor-pointer select-none ${
           showPinnedOnly
-            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-md3-1'
-            : 'bg-md3-surface-container-low text-md3-on-surface-variant border-md3-outline-variant/30 hover:bg-md3-surface-container'
+            ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-500/50 shadow-sm'
+            : 'bg-md3-surface-container-low text-md3-on-surface-variant border-md3-outline-variant/30 hover:bg-md3-surface-container hover:text-md3-on-surface'
         }`}
       >
-        <Pin className="w-3.5 h-3.5" />
+        <Pin className="w-4 h-4 fill-current" />
         <span>Pinned</span>
       </button>
     </div>

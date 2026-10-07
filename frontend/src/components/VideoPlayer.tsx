@@ -65,7 +65,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <div className="w-12 h-12 rounded-full bg-md3-primary/20 backdrop-blur border border-md3-primary/30 flex items-center justify-center text-md3-primary shadow-md3-2">
           <Play className="w-6 h-6 ml-0.5 fill-current" />
         </div>
-        <p className="text-xs font-medium text-md3-on-surface line-clamp-1 max-w-[240px]">
+        <p className="text-sm font-semibold text-md3-on-surface line-clamp-1 max-w-[280px]">
           {title || 'External Video Stream'}
         </p>
         {sourceUrl && (
@@ -73,13 +73,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-md3-surface-container-high/90 hover:bg-md3-primary hover:text-md3-on-primary text-[11px] font-medium text-md3-on-surface-variant transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-md3-surface-container-high/90 hover:bg-md3-primary hover:text-md3-on-primary text-xs font-semibold text-md3-on-surface-variant transition-colors shadow-sm"
           >
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink className="w-3.5 h-3.5" />
             <span>Open Original Stream</span>
           </a>
         )}
-        <span className="text-[10px] text-amber-300/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+        <span className="text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30">
           Stream Fallback (&gt;500MB or DRM)
         </span>
       </div>

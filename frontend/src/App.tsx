@@ -21,10 +21,12 @@ import { PhasteFeed } from './components/PhasteFeed';
 import { ImageLightbox } from './components/ImageLightbox';
 import { MetadataModal } from './components/MetadataModal';
 import { PhasteDetailModal } from './components/PhasteDetailModal';
+import { ThemeToggle } from './components/ThemeToggle';
 import { Snackbar } from './components/Snackbar';
 import { useAmbientCapture } from './hooks/useAmbientCapture';
 import { useEvents } from './hooks/useEvents';
 import { requestAndCacheLocation, requestLocationPermission, getLocationStatus } from './api';
+import { getStoredTheme, applyTheme, subscribeToThemeChanges, ThemeMode } from './utils/theme';
 
 export const App: React.FC = () => {
   const [phastes, setPhastes] = useState<Phaste[]>([]);
@@ -37,13 +39,31 @@ export const App: React.FC = () => {
   const [selectedPhasteForModal, setSelectedPhasteForModal] = useState<Phaste | null>(null);
   const [selectedDetailPhaste, setSelectedDetailPhaste] = useState<Phaste | null>(null);
   const [locationStatus, setLocationStatus] = useState<'granted' | 'prompt' | 'denied' | 'unsupported'>('prompt');
+  const [theme, setTheme] = useState<ThemeMode>(getStoredTheme);
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
 
   const showToast = useCallback((text: string, type: 'info' | 'success' | 'error' = 'info') => {
     setSnackbar({ id: String(Date.now()), text, type });
   }, []);
 
-  // 1. Initial & Filtered Data Loading + Geolocation Permission Query
+  // 1. Initial Theme & Geolocation Setup
+  useEffect(() => {
+    applyTheme(theme);
+    const unsubscribe = subscribeToThemeChanges(() => {
+      if (getStoredTheme() === 'system') {
+        applyTheme('system');
+        setTheme('system');
+      }
+    });
+    return unsubscribe;
+  }, [theme]);
+
+  const handleThemeChange = (newTheme: ThemeMode) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    showToast(`Theme switched to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} mode`, 'info');
+  };
+
   useEffect(() => {
     requestAndCacheLocation();
     getLocationStatus().then((s) => setLocationStatus(s));
@@ -174,63 +194,66 @@ export const App: React.FC = () => {
       )}
 
       {/* App Header */}
-      <header className="sticky top-0 z-40 bg-md3-surface/90 backdrop-blur-md border-b border-md3-outline-variant/20 px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-md3-primary-container flex items-center justify-center text-md3-on-primary-container shadow-md3-1">
-            <Zap className="w-4 h-4 fill-current" />
+      <header className="sticky top-0 z-40 bg-md3-surface/90 backdrop-blur-md border-b border-md3-outline-variant/30 px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-md3-primary-container flex items-center justify-center text-md3-on-primary-container shadow-md3-1">
+            <Zap className="w-4 h-4 fill-current stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-base font-bold tracking-tight text-md3-on-surface flex items-center gap-1.5">
+            <h1 className="text-lg font-bold tracking-tight text-md3-on-surface flex items-center gap-2">
               <span>phaste</span>
-              <span className="text-[10px] font-mono font-normal uppercase px-1.5 py-0.2 rounded bg-md3-surface-container-highest text-md3-outline">
+              <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded-full bg-md3-primary-container text-md3-on-primary-container tracking-wider">
                 beta
               </span>
             </h1>
           </div>
         </div>
 
-        {/* Ambient status & Author indicator */}
-        <div className="flex items-center gap-2.5 text-xs text-md3-on-surface-variant">
+        {/* Action Controls & Ambient Status */}
+        <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-md3-on-surface-variant">
+          {/* Light / Auto / Dark Mode Toggle */}
+          <ThemeToggle theme={theme} onThemeChange={handleThemeChange} />
+
           {/* Location Permission Status / Trigger */}
           {locationStatus === 'granted' ? (
             <span
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-medium"
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold"
               title="High-accuracy GPS location attached to pastes"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>📍 GPS Active</span>
             </span>
           ) : locationStatus === 'prompt' ? (
             <button
               onClick={handleEnableLocation}
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-md3-surface-container-high hover:bg-md3-surface-container-highest border border-md3-outline-variant/30 text-md3-on-surface text-[11px] font-medium transition-colors cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-md3-surface-container-high hover:bg-md3-surface-container-highest border border-md3-outline-variant/40 text-md3-on-surface text-xs font-medium transition-colors cursor-pointer"
               title="Click to allow browser location credentials for pastes"
             >
               <span>📍 Enable Location</span>
             </button>
           ) : locationStatus === 'denied' ? (
             <span
-              className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-md3-surface-container-high text-md3-outline text-[10px]"
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-md3-surface-container-high text-md3-on-surface-variant/80 text-xs"
               title="Location permission denied in browser settings"
             >
               <span>📍 Location: Blocked</span>
             </span>
           ) : null}
 
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Pasting as: You (Owner)</span>
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>You (Owner)</span>
           </span>
 
           {isSubmitting ? (
-            <span className="flex items-center gap-1.5 text-md3-primary font-medium">
+            <span className="flex items-center gap-1.5 text-md3-primary font-semibold text-xs">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving in haste...</span>
+              <span>Saving...</span>
             </span>
           ) : (
-            <span className="hidden md:flex items-center gap-1.5 text-[11px] text-md3-outline">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Ready for Cmd+V</span>
+            <span className="hidden lg:flex items-center gap-1.5 text-xs text-md3-on-surface-variant font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Cmd+V to paste</span>
             </span>
           )}
         </div>

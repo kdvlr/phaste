@@ -100,8 +100,8 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
       return (
         <div className="flex flex-col items-center justify-center py-16 text-center text-md3-on-surface-variant">
           <Sparkles className="w-10 h-10 text-md3-outline mb-3 stroke-1" />
-          <h3 className="text-sm font-medium text-md3-on-surface">No matches found</h3>
-          <p className="text-xs text-md3-on-surface-variant/70 mt-1">
+          <h3 className="text-base font-semibold text-md3-on-surface">No matches found</h3>
+          <p className="text-sm text-md3-on-surface-variant/80 mt-1">
             Try adjusting your query or remove filter tags
           </p>
         </div>
@@ -120,23 +120,23 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
         {searchGroups.map((group) => (
           <section key={group.key} className="space-y-4">
             {/* Sticky Date Section Header */}
-            <div className="sticky top-[4.25rem] z-10 backdrop-blur-md bg-md3-surface/90 py-2 px-4 rounded-full border border-md3-outline-variant/20 flex items-center justify-between shadow-sm">
+            <div className="sticky top-[4.25rem] z-10 backdrop-blur-md bg-md3-surface/90 py-2.5 px-4 rounded-full border border-md3-outline-variant/30 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-2.5 min-w-0">
                 {group.isPinnedSection ? (
-                  <Pin className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <Pin className="w-4 h-4 text-amber-500 fill-current flex-shrink-0" />
                 ) : (
                   <Calendar className="w-4 h-4 text-md3-primary flex-shrink-0" />
                 )}
-                <span className="text-sm font-semibold text-md3-on-surface truncate">
+                <span className="text-sm sm:text-base font-semibold text-md3-on-surface truncate">
                   {group.title}
                 </span>
                 {group.subtitle && (
-                  <span className="text-xs text-md3-on-surface-variant/70 hidden sm:inline truncate">
+                  <span className="text-xs sm:text-sm text-md3-on-surface-variant font-medium hidden sm:inline truncate">
                     • {group.subtitle}
                   </span>
                 )}
               </div>
-              <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-md3-surface-container-high text-md3-on-surface-variant flex-shrink-0">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-md3-surface-container-high text-md3-on-surface-variant flex-shrink-0 border border-md3-outline-variant/20">
                 {group.items.length} {group.items.length === 1 ? 'result' : 'results'}
               </span>
             </div>
@@ -149,7 +149,7 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
                 return (
                   <div key={phaste.id} className="relative">
                     {matchType && matchType !== 'filter' && (
-                      <span className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-md3-primary-container text-md3-on-primary-container text-[10px] font-semibold shadow-md3-1">
+                      <span className="absolute top-2 right-2 z-10 px-2.5 py-0.5 rounded-full bg-md3-primary-container text-md3-on-primary-container text-xs font-semibold shadow-md3-1 border border-md3-primary/20">
                         {matchType === 'hybrid' ? '⚡ Hybrid' : matchType === 'semantic' ? '🔮 Visual' : '📝 Text'}
                       </span>
                     )}
@@ -179,9 +179,9 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
         <div className="w-16 h-16 rounded-full bg-md3-surface-container-high flex items-center justify-center mb-4">
           <Inbox className="w-8 h-8 text-md3-primary stroke-1" />
         </div>
-        <h3 className="text-base font-semibold text-md3-on-surface">Your Phastebin is empty</h3>
-        <p className="text-xs text-md3-on-surface-variant/80 mt-1.5 max-w-sm leading-relaxed">
-          Press <kbd className="px-1.5 py-0.5 bg-md3-surface-container rounded font-mono text-md3-primary">Cmd+V</kbd> anywhere
+        <h3 className="text-lg font-semibold text-md3-on-surface">Your Phastebin is empty</h3>
+        <p className="text-sm text-md3-on-surface-variant mt-1.5 max-w-sm leading-relaxed">
+          Press <kbd className="px-2 py-0.5 bg-md3-surface-container-high rounded font-mono font-semibold text-md3-primary border border-md3-outline-variant/30">Cmd+V</kbd> anywhere
           or drag and drop files onto the window to capture in haste.
         </p>
       </div>
@@ -194,23 +194,23 @@ export const PhasteFeed: React.FC<PhasteFeedProps> = ({
       {dateGroups.map((group) => (
         <section key={group.key} className="space-y-4">
           {/* Sticky Date Section Header */}
-          <div className="sticky top-[4.25rem] z-10 backdrop-blur-md bg-md3-surface/90 py-2 px-4 rounded-full border border-md3-outline-variant/20 flex items-center justify-between shadow-sm">
+          <div className="sticky top-[4.25rem] z-10 backdrop-blur-md bg-md3-surface/90 py-2.5 px-4 rounded-full border border-md3-outline-variant/30 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2.5 min-w-0">
               {group.isPinnedSection ? (
-                <Pin className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <Pin className="w-4 h-4 text-amber-500 fill-current flex-shrink-0" />
               ) : (
                 <Calendar className="w-4 h-4 text-md3-primary flex-shrink-0" />
               )}
-              <span className="text-sm font-semibold text-md3-on-surface truncate">
+              <span className="text-sm sm:text-base font-semibold text-md3-on-surface truncate">
                 {group.title}
               </span>
               {group.subtitle && (
-                <span className="text-xs text-md3-on-surface-variant/70 hidden sm:inline truncate">
+                <span className="text-xs sm:text-sm text-md3-on-surface-variant font-medium hidden sm:inline truncate">
                   • {group.subtitle}
                 </span>
               )}
             </div>
-            <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-md3-surface-container-high text-md3-on-surface-variant flex-shrink-0">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-md3-surface-container-high text-md3-on-surface-variant flex-shrink-0 border border-md3-outline-variant/20">
               {group.items.length} {group.items.length === 1 ? 'paste' : 'pastes'}
             </span>
           </div>

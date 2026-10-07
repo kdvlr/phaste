@@ -88,8 +88,8 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
       onClick={() => onSelect(phaste)}
       className={`group relative rounded-md3-xl bg-md3-surface-container border transition-all duration-200 overflow-hidden flex flex-col cursor-pointer ${
         phaste.is_pinned
-          ? 'border-amber-500/30 shadow-md3-2 ring-1 ring-amber-500/20'
-          : 'border-md3-outline-variant/20 hover:border-md3-outline-variant/40 shadow-md3-1 hover:shadow-md3-2'
+          ? 'border-amber-500/40 shadow-md3-2 ring-1 ring-amber-500/30'
+          : 'border-md3-outline-variant/30 hover:border-md3-outline-variant/60 shadow-md3-1 hover:shadow-md3-2'
       }`}
     >
       {/* Card Header */}
@@ -97,29 +97,29 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           {/* Status Indicator */}
           {isProcessing ? (
-            <span className="flex items-center gap-1.5 text-[11px] text-md3-primary font-medium animate-pulse">
+            <span className="flex items-center gap-1.5 text-xs text-md3-primary font-medium animate-pulse">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>Enriching...</span>
             </span>
           ) : isFailed ? (
-            <span className="flex items-center gap-1 text-[11px] text-md3-error font-medium" title={phaste.error_message || ''}>
+            <span className="flex items-center gap-1 text-xs text-md3-error font-medium" title={phaste.error_message || ''}>
               <AlertCircle className="w-3.5 h-3.5" />
               <span>Failed</span>
             </span>
           ) : null}
 
           {phaste.title ? (
-            <h4 className="text-sm font-medium text-md3-on-surface truncate">
+            <h4 className="text-base font-semibold text-md3-on-surface truncate">
               {phaste.title}
             </h4>
           ) : (
-            <span className="text-xs uppercase font-semibold text-md3-outline tracking-wider">
+            <span className="text-xs uppercase font-bold text-md3-outline tracking-wider">
               {phaste.kind}
             </span>
           )}
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls - Comfortable 34-36px touch targets for Apple HIG */}
         <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           {/* Pin */}
           <button
@@ -127,32 +127,32 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
               e.stopPropagation();
               onPinToggle(phaste.id, phaste.is_pinned);
             }}
-            className={`p-1.5 rounded-full transition-colors ${
+            className={`p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center transition-colors ${
               phaste.is_pinned
-                ? 'text-amber-400 bg-amber-400/10 hover:bg-amber-400/20'
+                ? 'text-amber-500 bg-amber-500/15 hover:bg-amber-500/25'
                 : 'text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high'
             }`}
             title={phaste.is_pinned ? 'Unpin' : 'Pin to top'}
           >
-            <Pin className="w-3.5 h-3.5" />
+            <Pin className="w-4 h-4" />
           </button>
 
           {/* COPY CONTENT BUTTON */}
           <button
             onClick={handleCopyContent}
-            className="p-1.5 rounded-full text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
+            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
             title="Copy actual paste content (text, link, or media)"
           >
-            {copiedContent ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copiedContent ? <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 stroke-[2.5]" /> : <Copy className="w-4 h-4" />}
           </button>
 
           {/* COPY PUBLIC SHARE URL */}
           <button
             onClick={handleCopyShare}
-            className="p-1.5 rounded-full text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
+            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
             title="Copy public share URL (/sh/slug)"
           >
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+            {copiedLink ? <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 stroke-[2.5]" /> : <Share2 className="w-4 h-4" />}
           </button>
 
           {/* Expand to Big 4/5th Modal */}
@@ -161,10 +161,10 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
               e.stopPropagation();
               onSelect(phaste);
             }}
-            className="p-1.5 rounded-full text-md3-on-surface-variant hover:text-md3-primary hover:bg-md3-primary/10 transition-colors"
+            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-primary hover:bg-md3-primary/10 transition-colors"
             title="Expand into full 4/5 view with metadata"
           >
-            <Maximize2 className="w-3.5 h-3.5" />
+            <Maximize2 className="w-4 h-4" />
           </button>
 
           {/* Delete */}
@@ -173,10 +173,10 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
               e.stopPropagation();
               onDelete(phaste.id);
             }}
-            className="p-1.5 rounded-full text-md3-on-surface-variant hover:text-md3-error hover:bg-md3-error/10 transition-colors"
+            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-error hover:bg-md3-error/10 transition-colors"
             title="Delete phaste"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -210,8 +210,8 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
               loading="lazy"
             />
             {phaste.ocr_transcript && (
-              <span className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur text-[10px] text-white font-medium border border-white/10">
-                <FileText className="w-2.5 h-2.5 text-md3-primary" />
+              <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur text-xs text-white font-medium border border-white/15 shadow-sm">
+                <FileText className="w-3.5 h-3.5 text-md3-primary" />
                 <span>OCR Indexed</span>
               </span>
             )}
@@ -220,9 +220,9 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
 
         {/* Kind: LINK */}
         {phaste.kind === 'link' && (
-          <div className="rounded-md3-md bg-md3-surface-container-lowest border border-md3-outline-variant/20 overflow-hidden">
+          <div className="rounded-md3-md bg-md3-surface-container-lowest border border-md3-outline-variant/30 overflow-hidden shadow-sm">
             {og?.image_url && (
-              <div className="aspect-[2/1] w-full overflow-hidden bg-black/20">
+              <div className="aspect-[2/1] w-full overflow-hidden bg-black/10 dark:bg-black/30">
                 <img
                   src={og.image_url}
                   alt={og.title || 'Preview'}
@@ -231,13 +231,13 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
                 />
               </div>
             )}
-            <div className="p-3 flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5 text-[11px] text-md3-on-surface-variant font-medium">
+            <div className="p-3.5 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-md3-on-surface-variant font-medium">
                 {og?.favicon_url && (
                   <img
                     src={og.favicon_url}
                     alt=""
-                    className="w-3.5 h-3.5 rounded-sm object-contain"
+                    className="w-4 h-4 rounded-sm object-contain"
                     onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                   />
                 )}
@@ -248,12 +248,12 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-xs font-semibold text-md3-primary hover:underline line-clamp-2"
+                className="text-sm font-semibold text-md3-primary hover:underline line-clamp-2 leading-snug"
               >
                 {phaste.title || og?.title || phaste.source_url}
               </a>
               {og?.description && (
-                <p className="text-[11px] text-md3-on-surface-variant line-clamp-2 leading-relaxed">
+                <p className="text-xs text-md3-on-surface-variant line-clamp-2 leading-relaxed">
                   {og.description}
                 </p>
               )}
@@ -268,7 +268,7 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
       </div>
 
       {/* Card Footer: Metadata Context */}
-      <div className="px-4 py-2.5 bg-md3-surface-container-low/40 border-t border-md3-outline-variant/10 mt-2">
+      <div className="px-4 py-2.5 bg-md3-surface-container-low/60 border-t border-md3-outline-variant/15 mt-2">
         <MetadataBadge
           createdAt={phaste.created_at}
           metadata={phaste.metadata_context || {}}
