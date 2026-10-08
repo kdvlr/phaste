@@ -23,6 +23,7 @@ import { MetadataModal } from './components/MetadataModal';
 import { PhasteDetailModal } from './components/PhasteDetailModal';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Snackbar } from './components/Snackbar';
+import { UnpinConfirmDialog } from './components/UnpinConfirmDialog';
 import { useAmbientCapture } from './hooks/useAmbientCapture';
 import { useEvents } from './hooks/useEvents';
 import { requestAndCacheLocation, requestLocationPermission, getLocationStatus } from './api';
@@ -41,6 +42,7 @@ export const App: React.FC = () => {
   const [locationStatus, setLocationStatus] = useState<'granted' | 'prompt' | 'denied' | 'unsupported'>('prompt');
   const [theme, setTheme] = useState<ThemeMode>(getStoredTheme);
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
+  const [unpinTarget, setUnpinTarget] = useState<Phaste | null>(null);
 
   const showToast = useCallback((text: string, type: 'info' | 'success' | 'error' = 'info') => {
     setSnackbar({ id: String(Date.now()), text, type });
@@ -159,15 +161,46 @@ export const App: React.FC = () => {
   });
 
   // 5. Actions: Pin Toggle & Delete
-  const handlePinToggle = async (id: string, current: boolean) => {
+  const executePinUpdate = async (id: string, pin: boolean) => {
     try {
-      const updated = await updatePhaste(id, { is_pinned: !current });
+      const updated = await updatePhaste(id, { is_pinned: pin });
       setPhastes((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      if (searchResults) {
+        setSearchResults((prev) =>
+          prev?.map((r) => (r.phaste.id === id ? { ...r, phaste: updated } : r)) || null
+        );
+      }
       setSelectedDetailPhaste((prev) => (prev?.id === id ? updated : prev));
       showToast(updated.is_pinned ? 'Pinned to top' : 'Unpinned');
     } catch {
       showToast('Failed to update pin status', 'error');
     }
+  };
+
+  const handlePinToggle = (id: string, current: boolean) => {
+    if (current) {
+      // Removing a pin -> Prompt confirmation dialog
+      const target =
+        phastes.find((p) => p.id === id) ||
+        (selectedDetailPhaste?.id === id ? selectedDetailPhaste : null) ||
+        searchResults?.find((r) => r.phaste.id === id)?.phaste ||
+        ({ id, is_pinned: true, kind: 'text' } as Phaste);
+      setUnpinTarget(target);
+    } else {
+      // Adding a pin -> pin immediately without confirmation
+      executePinUpdate(id, true);
+    }
+  };
+
+  const handleConfirmUnpin = () => {
+    if (!unpinTarget) return;
+    const targetId = unpinTarget.id;
+    setUnpinTarget(null);
+    executePinUpdate(targetId, false);
+  };
+
+  const handleCancelUnpin = () => {
+    setUnpinTarget(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -328,6 +361,14 @@ export const App: React.FC = () => {
         phaste={selectedPhasteForModal}
         isOpen={Boolean(selectedPhasteForModal)}
         onClose={() => setSelectedPhasteForModal(null)}
+      />
+
+      {/* Unpin Confirmation Dialog */}
+      <UnpinConfirmDialog
+        isOpen={Boolean(unpinTarget)}
+        phaste={unpinTarget}
+        onConfirm={handleConfirmUnpin}
+        onCancel={handleCancelUnpin}
       />
 
       {/* Non-blocking Transient Material 3 Snackbar */}
