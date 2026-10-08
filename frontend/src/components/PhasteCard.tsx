@@ -93,7 +93,7 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
       }`}
     >
       {/* Card Header */}
-      <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+      <div className="flex items-center justify-between px-3.5 pt-2.5 pb-1">
         <div className="flex items-center gap-2 min-w-0">
           {/* Status Indicator */}
           {isProcessing ? (
@@ -109,50 +109,50 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
           ) : null}
 
           {phaste.title ? (
-            <h4 className="text-base font-semibold text-md3-on-surface truncate">
+            <h4 className="text-sm font-semibold text-md3-on-surface truncate">
               {phaste.title}
             </h4>
           ) : (
-            <span className="text-xs uppercase font-bold text-md3-outline tracking-wider">
+            <span className="text-[11px] uppercase font-bold text-md3-outline tracking-wider">
               {phaste.kind}
             </span>
           )}
         </div>
 
-        {/* Action Controls - Comfortable 34-36px touch targets for Apple HIG */}
-        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        {/* Action Controls */}
+        <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           {/* Pin */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               onPinToggle(phaste.id, phaste.is_pinned);
             }}
-            className={`p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center transition-colors ${
+            className={`p-1 rounded-full min-w-[30px] min-h-[30px] flex items-center justify-center transition-colors ${
               phaste.is_pinned
                 ? 'text-amber-500 bg-amber-500/15 hover:bg-amber-500/25'
                 : 'text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high'
             }`}
             title={phaste.is_pinned ? 'Unpin' : 'Pin to top'}
           >
-            <Pin className="w-4 h-4" />
+            <Pin className="w-3.5 h-3.5" />
           </button>
 
           {/* COPY CONTENT BUTTON */}
           <button
             onClick={handleCopyContent}
-            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
+            className="p-1 rounded-full min-w-[30px] min-h-[30px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
             title="Copy actual paste content (text, link, or media)"
           >
-            {copiedContent ? <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 stroke-[2.5]" /> : <Copy className="w-4 h-4" />}
+            {copiedContent ? <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 stroke-[2.5]" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
 
           {/* COPY PUBLIC SHARE URL */}
           <button
             onClick={handleCopyShare}
-            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
+            className="p-1 rounded-full min-w-[30px] min-h-[30px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-on-surface hover:bg-md3-surface-container-high transition-colors"
             title="Copy public share URL (/sh/slug)"
           >
-            {copiedLink ? <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 stroke-[2.5]" /> : <Share2 className="w-4 h-4" />}
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 stroke-[2.5]" /> : <Share2 className="w-3.5 h-3.5" />}
           </button>
 
           {/* Expand to Big 4/5th Modal */}
@@ -161,10 +161,10 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
               e.stopPropagation();
               onSelect(phaste);
             }}
-            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-primary hover:bg-md3-primary/10 transition-colors"
+            className="p-1 rounded-full min-w-[30px] min-h-[30px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-primary hover:bg-md3-primary/10 transition-colors"
             title="Expand into full 4/5 view with metadata"
           >
-            <Maximize2 className="w-4 h-4" />
+            <Maximize2 className="w-3.5 h-3.5" />
           </button>
 
           {/* Delete */}
@@ -173,16 +173,16 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
               e.stopPropagation();
               onDelete(phaste.id);
             }}
-            className="p-1.5 rounded-full min-w-[34px] min-h-[34px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-error hover:bg-md3-error/10 transition-colors"
+            className="p-1 rounded-full min-w-[30px] min-h-[30px] flex items-center justify-center text-md3-on-surface-variant hover:text-md3-error hover:bg-md3-error/10 transition-colors"
             title="Delete phaste"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
       {/* Card Content Body */}
-      <div className="px-4 py-2 flex-1">
+      <div className="px-3 py-1 flex-1">
         {/* Kind: VIDEO */}
         {phaste.kind === 'video' && (
           <VideoPlayer
@@ -267,8 +267,8 @@ export const PhasteCard: React.FC<PhasteCardProps> = ({
         )}
       </div>
 
-      {/* Card Footer: Metadata Context */}
-      <div className="px-4 py-2.5 bg-md3-surface-container-low/60 border-t border-md3-outline-variant/15 mt-2">
+      {/* Card Footer: Metadata Context (Compact single-line) */}
+      <div className="px-3 py-1.5 bg-md3-surface-container-low/50 border-t border-md3-outline-variant/15 mt-1">
         <MetadataBadge
           createdAt={phaste.created_at}
           metadata={phaste.metadata_context || {}}
