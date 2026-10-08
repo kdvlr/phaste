@@ -9,32 +9,32 @@
 
 :root,
 html.light {
-  /* MD3 Light Theme Palette */
-  --md-primary: 103 80 164;            /* #6750A4 Vibrant Royal Lavender */
+  /* Woodland Light Theme Palette (Cream, Cedar Brown & Warm Taupe) */
+  --md-primary: 141 110 99;            /* #8D6E63 Cedar Brown */
   --md-on-primary: 255 255 255;        /* #FFFFFF */
-  --md-primary-container: 234 221 255; /* #EADDFF Soft purple chip */
-  --md-on-primary-container: 33 0 93;  /* #21005D High contrast deep purple */
+  --md-primary-container: 236 227 223; /* #ECE3DF Soft warm cedar-cream container */
+  --md-on-primary-container: 62 39 35; /* #3E2723 Deep roast brown */
 
-  --md-secondary: 98 91 113;           /* #625B71 */
+  --md-secondary: 109 76 65;           /* #6D4C41 Warm chestnut brown */
   --md-on-secondary: 255 255 255;      /* #FFFFFF */
-  --md-secondary-container: 232 222 248; /* #E8DEF8 */
-  --md-on-secondary-container: 29 25 43;
+  --md-secondary-container: 215 204 200; /* #D7CCC8 Muted taupe/parchment */
+  --md-on-secondary-container: 62 39 35;
 
-  /* Surfaces: Soft tint prevents eye strain and glare (Apple HIG / MD3) */
-  --md-surface: 250 248 253;           /* #FAF8FD Warm, gentle light background */
-  --md-surface-dim: 222 216 225;
+  /* Surfaces: Premium neutral off-white / woodland canvas */
+  --md-surface: 245 245 247;           /* #F5F5F7 Premium neutral off-white */
+  --md-surface-dim: 222 218 210;       /* #DEDAD2 */
   --md-surface-bright: 255 255 255;
-  --md-surface-container-lowest: 255 255 255; /* Crisp pure white cards */
-  --md-surface-container-low: 245 242 249;    /* #F5F2F9 */
-  --md-surface-container: 241 237 246;        /* #F1EDF6 Base card surface */
-  --md-surface-container-high: 235 231 241;   /* #EBE7F1 Hover/active container */
-  --md-surface-container-highest: 229 225 236;/* #E5E1EC Pill/control background */
+  --md-surface-container-lowest: 255 255 255; /* #FFFFFF Crisp pure white cards */
+  --md-surface-container-low: 242 239 233;    /* #F2EFE9 Warm cream sub-container */
+  --md-surface-container: 229 226 218;        /* #E5E2DA Elegant warm-grey/taupe container */
+  --md-surface-container-high: 215 211 200;   /* #D7D3C8 High container */
+  --md-surface-container-highest: 201 196 183;/* #C9C4B7 Control/pill container */
 
-  /* Text & Labels: Deep charcoal text for effortless reading without squinting */
-  --md-on-surface: 28 27 31;           /* #1C1B1F Super high contrast (13:1 ratio) */
-  --md-on-surface-variant: 73 69 79;   /* #49454F Clear secondary text (7.2:1 ratio) */
-  --md-outline: 121 116 126;           /* #79747E Defined borders */
-  --md-outline-variant: 202 196 208;   /* #CAC4D0 Subtle dividers */
+  /* Text & Labels: Deep espresso brown for effortless readability */
+  --md-on-surface: 62 39 35;           /* #3E2723 Deep rich espresso (>13:1 contrast ratio) */
+  --md-on-surface-variant: 109 76 65;  /* #6D4C41 Cedar brown secondary text (>6.5:1 ratio) */
+  --md-outline: 141 110 99;           /* #8D6E63 Defined borders */
+  --md-outline-variant: 215 204 200;   /* #D7CCC8 Warm dividers */
 
   --md-error: 179 38 30;              /* #B3261E */
   --md-on-error: 255 255 255;
@@ -43,32 +43,32 @@ html.light {
 }
 
 html.dark {
-  /* MD3 Dark Theme Palette */
-  --md-primary: 208 188 255;            /* #D0BCFF Luminous Lavender */
-  --md-on-primary: 56 30 114;           /* #381E72 */
-  --md-primary-container: 79 55 139;    /* #4F378B */
-  --md-on-primary-container: 234 221 255;/* #EADDFF */
+  /* Woodland Dark Theme Palette (Dark Brown-Black & Warm Cedar Glow) */
+  --md-primary: 215 204 200;            /* #D7CCC8 Luminous warm cedar / parchment glow */
+  --md-on-primary: 62 39 35;           /* #3E2723 Deep brown */
+  --md-primary-container: 78 52 46;    /* #4E342E Rich roast chip */
+  --md-on-primary-container: 215 204 200;/* #D7CCC8 */
 
-  --md-secondary: 204 194 220;          /* #CCC2DC */
-  --md-on-secondary: 51 45 65;          /* #332D41 */
-  --md-secondary-container: 74 68 88;   /* #4A4458 */
-  --md-on-secondary-container: 232 222 248;
+  --md-secondary: 188 170 164;          /* #BCAAA4 Warm muted taupe */
+  --md-on-secondary: 62 39 35;          /* #3E2723 */
+  --md-secondary-container: 58 46 42;   /* #3A2E2A Deep woodland container */
+  --md-on-secondary-container: 239 235 233;
 
-  /* Surfaces: Deep OLED foundation with rich contrast layers */
-  --md-surface: 18 18 22;               /* #121216 Deep OLED backdrop */
-  --md-surface-dim: 18 18 22;
-  --md-surface-bright: 58 56 64;
-  --md-surface-container-lowest: 13 13 17;   /* #0D0D11 */
-  --md-surface-container-low: 26 25 31;      /* #1A191F */
-  --md-surface-container: 33 32 39;          /* #212027 Base card container */
-  --md-surface-container-high: 43 42 50;     /* #2B2A32 Elevated container */
-  --md-surface-container-highest: 54 52 62;  /* #36343E Chip background */
+  /* Surfaces: Dark brown-black foundation with rich warm contrast layers */
+  --md-surface: 27 22 20;               /* #1B1614 Dark brown-black OLED canvas */
+  --md-surface-dim: 27 22 20;
+  --md-surface-bright: 72 58 52;
+  --md-surface-container-lowest: 21 17 16;   /* #151110 */
+  --md-surface-container-low: 36 30 27;      /* #241E1B */
+  --md-surface-container: 45 36 33;          /* #2D2421 Base container */
+  --md-surface-container-high: 58 46 42;     /* #3A2E2A Elevated container */
+  --md-surface-container-highest: 72 58 52;  /* #483A34 Chip background */
 
-  /* Text & Labels: Luminous crisp text for strain-free reading in dark environments */
-  --md-on-surface: 230 225 233;         /* #E6E1E9 High-contrast body text */
-  --md-on-surface-variant: 202 196 208; /* #CAC4D0 Readable secondary text */
-  --md-outline: 147 143 153;           /* #938F99 Clean borders */
-  --md-outline-variant: 73 69 79;      /* #49454F Subtle dividers */
+  /* Text & Labels: Crisp warm cream text for strain-free reading in dark environments */
+  --md-on-surface: 239 235 233;         /* #EFEBE9 High-contrast body text (>16:1 ratio) */
+  --md-on-surface-variant: 215 204 200; /* #D7CCC8 Readable secondary cedar text (>11:1 ratio) */
+  --md-outline: 161 136 127;           /* #A1887F Clean earthy borders */
+  --md-outline-variant: 78 52 46;      /* #4E342E Warm dark dividers */
 
   --md-error: 242 184 181;             /* #F2B8B5 */
   --md-on-error: 96 20 16;
@@ -79,29 +79,29 @@ html.dark {
 /* System dark mode fallback when no class is explicitly forced */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --md-primary: 208 188 255;
-    --md-on-primary: 56 30 114;
-    --md-primary-container: 79 55 139;
-    --md-on-primary-container: 234 221 255;
+    --md-primary: 215 204 200;
+    --md-on-primary: 62 39 35;
+    --md-primary-container: 78 52 46;
+    --md-on-primary-container: 215 204 200;
 
-    --md-secondary: 204 194 220;
-    --md-on-secondary: 51 45 65;
-    --md-secondary-container: 74 68 88;
-    --md-on-secondary-container: 232 222 248;
+    --md-secondary: 188 170 164;
+    --md-on-secondary: 62 39 35;
+    --md-secondary-container: 58 46 42;
+    --md-on-secondary-container: 239 235 233;
 
-    --md-surface: 18 18 22;
-    --md-surface-dim: 18 18 22;
-    --md-surface-bright: 58 56 64;
-    --md-surface-container-lowest: 13 13 17;
-    --md-surface-container-low: 26 25 31;
-    --md-surface-container: 33 32 39;
-    --md-surface-container-high: 43 42 50;
-    --md-surface-container-highest: 54 52 62;
+    --md-surface: 27 22 20;
+    --md-surface-dim: 27 22 20;
+    --md-surface-bright: 72 58 52;
+    --md-surface-container-lowest: 21 17 16;
+    --md-surface-container-low: 36 30 27;
+    --md-surface-container: 45 36 33;
+    --md-surface-container-high: 58 46 42;
+    --md-surface-container-highest: 72 58 52;
 
-    --md-on-surface: 230 225 233;
-    --md-on-surface-variant: 202 196 208;
-    --md-outline: 147 143 153;
-    --md-outline-variant: 73 69 79;
+    --md-on-surface: 239 235 233;
+    --md-on-surface-variant: 215 204 200;
+    --md-outline: 161 136 127;
+    --md-outline-variant: 78 52 46;
 
     --md-error: 242 184 181;
     --md-on-error: 96 20 16;
