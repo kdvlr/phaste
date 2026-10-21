@@ -72,6 +72,11 @@ export interface MetadataContext {
     width?: number;
     height?: number;
   };
+  ai?: {
+    summary?: string;
+    tags?: string[];
+    model?: string;
+  };
   [key: string]: any;
 }
 

@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   Camera,
-  Maximize2
+  Maximize2,
+  Sparkles
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { format } from 'date-fns';
@@ -305,7 +306,34 @@ export const MetadataModal: React.FC<MetadataModalProps> = ({ phaste, isOpen, on
                 </div>
               </div>
 
-              {/* 6. Media / EXIF / OCR Data */}
+              {/* 6. AI Insights (LiteLLM) */}
+              {phaste.metadata_context?.ai && (
+                <div className="p-4 rounded-md3-lg bg-md3-surface-container-low border border-amber-500/25 dark:border-amber-400/25">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>AI Executive Summary (LiteLLM)</span>
+                  </div>
+                  {phaste.metadata_context.ai.summary && (
+                    <p className="text-xs text-md3-on-surface leading-relaxed mb-2.5">
+                      {phaste.metadata_context.ai.summary}
+                    </p>
+                  )}
+                  {phaste.metadata_context.ai.tags && phaste.metadata_context.ai.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {phaste.metadata_context.ai.tags.map((tag: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded-full bg-md3-surface-container-highest text-md3-on-surface-variant text-[10px] font-medium border border-md3-outline-variant/20"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 7. Media / EXIF / OCR Data */}
               {(exif || phaste.ocr_transcript || og) && (
                 <div className="p-4 rounded-md3-lg bg-md3-surface-container-low border border-md3-outline-variant/15">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-md3-primary mb-3">

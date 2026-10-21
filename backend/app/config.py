@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     PORT: int = 8000
     TRUST_PROXY_HEADERS: bool = True
 
+    # LiteLLM Integration
+    LITELLM_BASE_URL: str = "http://litellm:4000/v1"
+    LITELLM_API_KEY: str = "sk-litellm-ae694f8246abdba5b3ef9e2c4b5d7a1d061bed47"
+    LITELLM_MODEL: str = "gemini-flash"
+    LITELLM_ENABLED: bool = True
+
 
 settings = Settings()
 

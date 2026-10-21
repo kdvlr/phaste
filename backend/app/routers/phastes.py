@@ -33,6 +33,7 @@ from app.services.video_downloader import is_video_url, download_video
 from app.services.ocr_service import extract_ocr_transcript
 from app.services.embedding_service import embedding_service
 from app.services.geocoding_service import extract_exif_metadata, reverse_geocode_coordinates
+from app.services.ai_service import ai_service
 from app.utils.event_bus import event_bus
 
 router = APIRouter(prefix="/api/phastes", tags=["Phastes"])
@@ -127,6 +128,30 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
             else:
                 item.status = "ready"
 
+            # 4. LiteLLM Enrichment: Smart Title, Executive Summary, Tags
+            try:
+                ai_data = await ai_service.enrich_paste(
+                    title=item.title,
+                    content=item.content,
+                    ocr_transcript=item.ocr_transcript,
+                    kind=item.kind,
+                    og_metadata=meta.get("og") if isinstance(meta.get("og"), dict) else None,
+                )
+                if ai_data:
+                    meta["ai"] = {
+                        "summary": ai_data.get("summary"),
+                        "tags": ai_data.get("tags", []),
+                        "model": ai_data.get("model"),
+                    }
+                    if ai_data.get("suggested_title") and (
+                        not item.title
+                        or item.title in ("upload", "Untitled", f"{item.id}")
+                        or item.title.endswith(".bin")
+                    ):
+                        item.title = ai_data["suggested_title"]
+            except Exception as ai_err:
+                logger.warning("AI enrichment failed for %s: %s", phaste_id, ai_err)
+
             item.metadata_context = meta
 
             # Update PostgreSQL full-text search vector
@@ -137,6 +162,8 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                 meta.get("city") or "",
                 meta.get("formatted_location") or "",
                 meta.get("og", {}).get("description", "") if isinstance(meta.get("og"), dict) else "",
+                meta.get("ai", {}).get("summary", "") if isinstance(meta.get("ai"), dict) else "",
+                " ".join(meta.get("ai", {}).get("tags", [])) if isinstance(meta.get("ai"), dict) else "",
             ]
             combined_text = " ".join(filter(None, full_text_parts))
             
@@ -145,6 +172,7 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                 update(Phaste)
                 .where(Phaste.id == phaste_id)
                 .values(
+                    title=item.title,
                     status=item.status,
                     media_path=item.media_path,
                     thumbnail_path=item.thumbnail_path,
@@ -582,9 +610,8 @@ async def create_phaste(
     await db.commit()
     await db.refresh(phaste)
 
-    # Dispatch background worker
-    if phaste.status == "processing":
-        background_tasks.add_task(run_background_enrichment, phaste.id)
+    # Dispatch background worker for heavy processing and AI enrichment
+    background_tasks.add_task(run_background_enrichment, phaste.id)
 
     # Publish creation event
     resp_obj = PhasteResponse.model_validate(phaste)
@@ -668,6 +695,20 @@ async def update_phaste(
     resp_data = PhasteResponse.model_validate(item)
     await event_bus.publish("phaste.updated", resp_data.model_dump(mode="json"))
     return resp_data
+
+
+@router.post("/{id}/ai-enrich", response_model=PhasteResponse)
+async def ai_enrich_phaste(
+    id: uuid.UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Trigger on-demand AI summary and tag enrichment using LiteLLM."""
+    await run_background_enrichment(id)
+    res = await db.execute(select(Phaste).where(Phaste.id == id))
+    item = res.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Phaste not found")
+    return PhasteResponse.model_validate(item)
 
 
 @router.delete("/{id}", status_code=204)
