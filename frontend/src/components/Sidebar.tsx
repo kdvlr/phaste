@@ -43,6 +43,7 @@ interface SidebarProps {
   onEnableLocation: () => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  onEmptyTrash?: () => void;
 }
 
 // Maps category names to contextual Lucide icons matching screenshot
@@ -74,6 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onEnableLocation,
   isMobileOpen = false,
   onCloseMobile,
+  onEmptyTrash,
 }) => {
   const [isPhastesExpanded, setIsPhastesExpanded] = useState(true);
 
@@ -277,22 +279,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
 
                 {/* Trash */}
-                <button
-                  onClick={() => handleSelectCollection('trash')}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
+                <div
+                  className={`group w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
                     selectedCollection === 'trash' && selectedTag === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
                 >
-                  <div className="flex items-center space-x-2.5">
+                  <button
+                    onClick={() => handleSelectCollection('trash')}
+                    className="flex-1 flex items-center space-x-2.5 text-left"
+                  >
                     <Trash2 className="w-4 h-4 text-[#a1887f]" />
                     <span>Trash</span>
+                  </button>
+                  <div className="flex items-center space-x-1.5">
+                    {collections.trash > 0 && onEmptyTrash && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEmptyTrash();
+                        }}
+                        className="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-300 hover:text-white bg-rose-900/50 hover:bg-rose-700/80 rounded transition-all"
+                        title="Empty Trash"
+                      >
+                        Empty
+                      </button>
+                    )}
+                    <span className="text-xs px-1.5 py-0.2 text-[#a1887f]">
+                      {collections.trash}
+                    </span>
                   </div>
-                  <span className="text-xs px-1.5 py-0.2 text-[#a1887f]">
-                    {collections.trash}
-                  </span>
-                </button>
+                </div>
               </div>
             )}
           </div>

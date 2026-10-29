@@ -855,6 +855,42 @@ async def ai_enrich_phaste(
     return PhasteResponse.model_validate(item)
 
 
+
+@router.delete("/trash/empty")
+async def empty_trash(db: AsyncSession = Depends(get_db)):
+    """Permanently delete all phastes currently in the trash."""
+    res = await db.execute(select(Phaste).where(Phaste.is_trash == True))
+    trash_items = res.scalars().all()
+    count = len(trash_items)
+
+    deleted_ids = []
+    for item in trash_items:
+        deleted_ids.append(str(item.id))
+        if item.media_path:
+            f = settings.MEDIA_ROOT / item.media_path
+            if f.exists():
+                try:
+                    f.unlink()
+                except Exception:
+                    pass
+
+        if item.thumbnail_path:
+            t = settings.MEDIA_ROOT / item.thumbnail_path
+            if t.exists():
+                try:
+                    t.unlink()
+                except Exception:
+                    pass
+
+        await db.delete(item)
+
+    if count > 0:
+        await db.commit()
+        await event_bus.publish("phaste.trash_emptied", {"deleted_ids": deleted_ids, "count": count})
+
+    return {"status": "ok", "deleted_count": count}
+
+
 @router.delete("/{id}", status_code=204)
 async def delete_phaste(id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(Phaste).where(Phaste.id == id))

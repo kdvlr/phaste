@@ -15,6 +15,7 @@ import {
   uploadPhasteFile,
   updatePhaste,
   deletePhaste,
+  emptyTrash,
   requestAndCacheLocation,
   requestLocationPermission,
   getLocationStatus,
@@ -24,6 +25,7 @@ import { NotesList } from './components/NotesList';
 import { NoteCanvas } from './components/NoteCanvas';
 import { MetadataInspector } from './components/MetadataInspector';
 import { UnpinConfirmDialog } from './components/UnpinConfirmDialog';
+import { EmptyTrashConfirmDialog } from './components/EmptyTrashConfirmDialog';
 import { Snackbar } from './components/Snackbar';
 import { useAmbientCapture } from './hooks/useAmbientCapture';
 import { useEvents } from './hooks/useEvents';
@@ -60,6 +62,7 @@ export const App: React.FC = () => {
   // Inspector & Dialogs State
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [unpinTarget, setUnpinTarget] = useState<Phaste | null>(null);
+  const [isEmptyTrashConfirmOpen, setIsEmptyTrashConfirmOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
   const pendingDeletions = React.useRef<
     Map<string, { phaste: Phaste; index: number; timer: any }>
@@ -406,6 +409,44 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleEmptyTrashRequest = () => {
+    if (collections.trash === 0) {
+      showToast('Trash is already empty', 'info');
+      return;
+    }
+    setIsEmptyTrashConfirmOpen(true);
+  };
+
+  const handleConfirmEmptyTrash = async () => {
+    setIsEmptyTrashConfirmOpen(false);
+    try {
+      // Cancel any pending undo timers for items in trash
+      pendingDeletions.current.forEach((val, key) => {
+        if (val.phaste.is_trash) {
+          clearTimeout(val.timer);
+          pendingDeletions.current.delete(key);
+        }
+      });
+
+      const res = await emptyTrash();
+      if (selectedCollection === 'trash') {
+        setPhastes([]);
+        setSelectedPhasteId(null);
+        if (window.innerWidth < 768) {
+          setMobileScreen('list');
+        }
+      }
+      await loadCategories();
+      showToast(
+        `Trash emptied (${res.deleted_count} ${res.deleted_count === 1 ? 'phaste' : 'phastes'} permanently deleted)`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Failed to empty trash:', err);
+      showToast('Failed to empty trash', 'error');
+    }
+  };
+
   const handlePhasteUpdated = (updated: Partial<Phaste> & { id: string }) => {
     setPhastes((prev) =>
       prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
@@ -476,6 +517,7 @@ export const App: React.FC = () => {
         onEnableLocation={handleEnableLocation}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        onEmptyTrash={handleEmptyTrashRequest}
       />
 
       {/* Pane 2: Phastes List Column */}
@@ -495,6 +537,7 @@ export const App: React.FC = () => {
           onTogglePin={handleTogglePin}
           onDeletePhaste={handleDeletePhaste}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onEmptyTrash={handleEmptyTrashRequest}
           isLoading={isLoading}
         />
       </div>
@@ -540,6 +583,14 @@ export const App: React.FC = () => {
         phaste={unpinTarget}
         onConfirm={handleConfirmUnpin}
         onCancel={() => setUnpinTarget(null)}
+      />
+
+      {/* Empty Trash Confirmation Dialog */}
+      <EmptyTrashConfirmDialog
+        isOpen={isEmptyTrashConfirmOpen}
+        count={collections.trash}
+        onConfirm={handleConfirmEmptyTrash}
+        onCancel={() => setIsEmptyTrashConfirmOpen(false)}
       />
 
       {/* Toast Snackbar Notification */}

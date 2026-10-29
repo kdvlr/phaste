@@ -244,6 +244,12 @@ export async function deletePhaste(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete phaste');
 }
 
+export async function emptyTrash(): Promise<{ status: string; deleted_count: number }> {
+  const res = await fetch(`${API_BASE}/phastes/trash/empty`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to empty trash');
+  return res.json();
+}
+
 export function getMediaUrl(path: string | null | undefined): string {
   if (!path) return '';
   return `${API_BASE}/media/${path}`;
