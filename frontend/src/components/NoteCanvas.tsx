@@ -4,7 +4,6 @@ import {
   Pin,
   Share2,
   Info,
-  MoreVertical,
   Edit3,
   Eye,
   CheckSquare,
@@ -50,7 +49,6 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isHeadingMenuOpen, setIsHeadingMenuOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -273,30 +271,14 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
             <Info className="w-4 h-4" />
           </button>
 
-          {/* More Menu ⋮ */}
-          <div className="relative">
-            <button
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="p-1.5 rounded-lg text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-black/5 dark:hover:bg-white/5"
-            >
-              <MoreVertical className="w-4 h-4" />
-            </button>
-
-            {showMoreMenu && (
-              <div
-                className="absolute right-0 mt-1 w-44 rounded-xl bg-white dark:bg-[#2d2421] border border-[#e5e2da] dark:border-[#4e342e] shadow-lg py-1 z-30 text-xs"
-                onClick={() => setShowMoreMenu(false)}
-              >
-                <button
-                  onClick={() => onDelete(phaste)}
-                  className="w-full px-3 py-2 flex items-center space-x-2 text-[#b3261e] hover:bg-[#b3261e]/10 text-left"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Move to Trash</span>
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Delete Phaste Button */}
+          <button
+            onClick={() => onDelete(phaste)}
+            className="p-1.5 rounded-lg text-[#b3261e] dark:text-[#f2b8b5] hover:bg-[#b3261e]/10 active:scale-95 transition-all"
+            title={phaste.is_trash ? 'Permanently Delete Phaste' : 'Delete Phaste'}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

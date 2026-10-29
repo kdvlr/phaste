@@ -165,7 +165,7 @@ export const NotesList: React.FC<NotesListProps> = ({
               <div
                 key={p.id}
                 onClick={() => onSelectPhaste(p)}
-                className={`relative rounded-xl p-3 cursor-pointer transition-all border ${
+                className={`group relative rounded-xl p-3 cursor-pointer transition-all border ${
                   isSelected
                     ? 'bg-white dark:bg-[#2d2421] shadow-sm border-[#8d6e63]/40 dark:border-[#8d6e63]/40 ring-1 ring-[#8d6e63]/20'
                     : 'bg-transparent border-transparent hover:bg-black/[0.03] dark:hover:bg-white/[0.03]'
@@ -208,11 +208,23 @@ export const NotesList: React.FC<NotesListProps> = ({
                     <span>{timeAgo}</span>
                   </div>
 
-                  {/* Kind indicator icon */}
-                  <div className="flex items-center space-x-1 opacity-70">
-                    {p.kind === 'image' && <ImageIcon className="w-3 h-3" />}
-                    {p.kind === 'video' && <VideoIcon className="w-3 h-3" />}
-                    {p.kind === 'link' && <LinkIcon className="w-3 h-3" />}
+                  {/* Actions & Kind indicator icon */}
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeletePhaste(p);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[#a1887f] hover:text-[#b3261e] hover:bg-[#b3261e]/10 transition-all"
+                      title="Delete Phaste"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                    <div className="flex items-center space-x-1 opacity-70">
+                      {p.kind === 'image' && <ImageIcon className="w-3 h-3" />}
+                      {p.kind === 'video' && <VideoIcon className="w-3 h-3" />}
+                      {p.kind === 'link' && <LinkIcon className="w-3 h-3" />}
+                    </div>
                   </div>
                 </div>
               </div>

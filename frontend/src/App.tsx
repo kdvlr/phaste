@@ -61,6 +61,16 @@ export const App: React.FC = () => {
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [unpinTarget, setUnpinTarget] = useState<Phaste | null>(null);
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
+  const pendingDeletions = React.useRef<
+    Map<string, { phaste: Phaste; index: number; timer: any }>
+  >(new Map());
+
+  // Clean up pending deletion timers on unmount
+  useEffect(() => {
+    return () => {
+      pendingDeletions.current.forEach((val) => clearTimeout(val.timer));
+    };
+  }, []);
 
   // Mobile Drill-down Navigation: 'list' or 'detail' (sidebar opens via drawer)
   const [mobileScreen, setMobileScreen] = useState<'list' | 'detail'>('list');
@@ -329,24 +339,71 @@ export const App: React.FC = () => {
       .catch(() => showToast('Failed to unpin phaste', 'error'));
   };
 
-  const handleDeletePhaste = async (p: Phaste) => {
-    try {
-      if (p.is_trash) {
-        await deletePhaste(p.id);
-        showToast('Permanently deleted phaste', 'info');
-      } else {
-        await updatePhaste(p.id, { is_trash: true });
-        showToast('Moved phaste to Trash', 'info');
-      }
-      setPhastes((prev) => prev.filter((item) => item.id !== p.id));
-      if (selectedPhasteId === p.id) {
-        setSelectedPhasteId(null);
+  const handleDeletePhaste = (p: Phaste) => {
+    const originalIndex = phastes.findIndex((item) => item.id === p.id);
+    const remaining = phastes.filter((item) => item.id !== p.id);
+
+    // Optimistically remove from list immediately (0ms visual response)
+    setPhastes(remaining);
+
+    // If active phaste is being deleted, move selection to adjacent phaste
+    if (selectedPhasteId === p.id) {
+      const nextPhaste = remaining[originalIndex] || remaining[originalIndex - 1] || null;
+      setSelectedPhasteId(nextPhaste?.id || null);
+      if (window.innerWidth < 768 && !nextPhaste) {
         setMobileScreen('list');
       }
-      loadCategories();
-    } catch {
-      showToast('Failed to delete phaste', 'error');
     }
+
+    if (!p.is_trash) {
+      // Mark as trash on backend immediately
+      updatePhaste(p.id, { is_trash: true }).catch(console.error);
+      loadCategories();
+    }
+
+    // Schedule permanent cleanup / commit after 20 seconds
+    const timer = setTimeout(async () => {
+      pendingDeletions.current.delete(p.id);
+      if (p.is_trash) {
+        try {
+          await deletePhaste(p.id);
+        } catch (e) {
+          console.error('Permanent delete error:', e);
+        }
+        loadCategories();
+      }
+    }, 20000);
+
+    pendingDeletions.current.set(p.id, { phaste: p, index: originalIndex, timer });
+
+    // Show 20-second snackbar with Undo action
+    setSnackbar({
+      id: `delete-${p.id}-${Date.now()}`,
+      text: p.is_trash ? 'Phaste permanently deleted' : 'Phaste moved to Trash',
+      actionLabel: 'Undo',
+      duration: 20000,
+      onAction: async () => {
+        const entry = pendingDeletions.current.get(p.id);
+        if (entry) {
+          clearTimeout(entry.timer);
+          pendingDeletions.current.delete(p.id);
+
+          if (!p.is_trash) {
+            await updatePhaste(p.id, { is_trash: false }).catch(console.error);
+          }
+
+          setPhastes((prev) => {
+            const copy = [...prev];
+            const insertIdx = Math.min(entry.index, copy.length);
+            copy.splice(insertIdx, 0, entry.phaste);
+            return copy;
+          });
+          setSelectedPhasteId(entry.phaste.id);
+          loadCategories();
+          showToast('Phaste restored', 'success');
+        }
+      },
+    });
   };
 
   const handlePhasteUpdated = (updated: Partial<Phaste> & { id: string }) => {

@@ -148,4 +148,5 @@ export interface SnackbarMessage {
   actionLabel?: string;
   onAction?: () => void;
   type?: 'info' | 'success' | 'error';
+  duration?: number;
 }
