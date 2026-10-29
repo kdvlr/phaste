@@ -20,7 +20,7 @@ interface NotesListProps {
   selectedPhaste: Phaste | null;
   onSelectPhaste: (phaste: Phaste) => void;
   activeTitle: string;
-  onNewNote: () => void;
+  onNewPhaste: () => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onTogglePin: (phaste: Phaste) => void;
@@ -34,7 +34,7 @@ export const NotesList: React.FC<NotesListProps> = ({
   selectedPhaste,
   onSelectPhaste,
   activeTitle,
-  onNewNote,
+  onNewPhaste,
   searchQuery,
   onSearchChange,
   onTogglePin,
@@ -84,9 +84,9 @@ export const NotesList: React.FC<NotesListProps> = ({
 
         <div className="flex items-center space-x-1">
           <button
-            onClick={onNewNote}
+            onClick={onNewPhaste}
             className="p-1.5 rounded-lg text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-transform"
-            title="New Note (or paste clipboard anywhere)"
+            title="New Phaste (or paste clipboard anywhere)"
           >
             <SquarePen className="w-4 h-4" />
           </button>
@@ -101,7 +101,7 @@ export const NotesList: React.FC<NotesListProps> = ({
                 ? 'bg-[#8d6e63]/20 text-[#3e2723] dark:text-white'
                 : 'text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-black/5 dark:hover:bg-white/5'
             }`}
-            title="Search Notes"
+            title="Search Phastes"
           >
             <Search className="w-4 h-4" />
           </button>
@@ -117,7 +117,7 @@ export const NotesList: React.FC<NotesListProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search in notes, OCR, tags..."
+              placeholder="Search in phastes, OCR, tags..."
               autoFocus
               className="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg bg-white dark:bg-[#2d2421] border border-[#e5e2da] dark:border-[#4e342e]/50 text-[#3e2723] dark:text-[#efebe9] focus:outline-none focus:ring-1 focus:ring-[#8d6e63]"
             />
@@ -137,17 +137,17 @@ export const NotesList: React.FC<NotesListProps> = ({
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
         {isLoading && phastes.length === 0 ? (
           <div className="p-6 text-center text-xs text-[#a1887f]">
-            Loading notes...
+            Loading phastes...
           </div>
         ) : phastes.length === 0 ? (
           <div className="p-8 text-center text-xs text-[#a1887f] space-y-2">
-            <div>No notes found.</div>
+            <div>No phastes found.</div>
             <button
-              onClick={onNewNote}
+              onClick={onNewPhaste}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#8d6e63] text-white text-xs font-medium hover:bg-[#6d4c41] transition-colors"
             >
               <SquarePen className="w-3.5 h-3.5" />
-              <span>Create Note</span>
+              <span>Create Phaste</span>
             </button>
           </div>
         ) : (

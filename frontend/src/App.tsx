@@ -52,7 +52,7 @@ export const App: React.FC = () => {
 
   // Notes & Content State
   const [phastes, setPhastes] = useState<Phaste[]>([]);
-  const [selectedPhaste, setSelectedPhaste] = useState<Phaste | null>(null);
+  const [selectedPhasteId, setSelectedPhasteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Phaste[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -128,6 +128,8 @@ export const App: React.FC = () => {
   }, []);
 
   // 3. Fetch Phastes for active collection / tag
+  // Note: Only depends on [selectedCollection, selectedTag].
+  // Never re-fetches when user changes active note selection!
   const loadPhastes = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -140,20 +142,19 @@ export const App: React.FC = () => {
         selectedTag || undefined
       );
       setPhastes(data.items);
-      // Automatically select the first note if none is selected on desktop
-      if (!selectedPhaste && data.items.length > 0 && window.innerWidth >= 768) {
-        setSelectedPhaste(data.items[0]);
-      } else if (selectedPhaste) {
-        // Refresh selected note if present in list
-        const refreshed = data.items.find((p) => p.id === selectedPhaste.id);
-        if (refreshed) setSelectedPhaste(refreshed);
-      }
+      // If no phaste is selected, pick the first one
+      setSelectedPhasteId((currId) => {
+        if (!currId && data.items.length > 0 && window.innerWidth >= 768) {
+          return data.items[0].id;
+        }
+        return currId;
+      });
     } catch {
-      showToast('Failed to load notes', 'error');
+      showToast('Failed to load phastes', 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCollection, selectedTag, selectedPhaste, showToast]);
+  }, [selectedCollection, selectedTag, showToast]);
 
   useEffect(() => {
     loadCategories();
@@ -188,31 +189,44 @@ export const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, showToast]);
 
-  // 5. Global Ambient Capture (Cmd+V clipboard & Drag-and-Drop)
+  // 5. Global Ambient Capture (Cmd+V clipboard & Drag-and-Drop) with Instant Optimistic UI
   const { isDragging } = useAmbientCapture({
-    onSuccess: (newItem, msg) => {
-      setPhastes((prev) => [newItem, ...prev.filter((p) => p.id !== newItem.id)]);
-      setSelectedPhaste(newItem);
+    onOptimisticCreate: (tempPhaste) => {
+      setPhastes((prev) => [tempPhaste, ...prev]);
+      setSelectedPhasteId(tempPhaste.id);
       setMobileScreen('detail');
+    },
+    onSuccess: (realItem, msg, tempId) => {
+      setPhastes((prev) =>
+        tempId
+          ? prev.map((p) => (p.id === tempId ? realItem : p))
+          : [realItem, ...prev.filter((p) => p.id !== realItem.id)]
+      );
+      setSelectedPhasteId(realItem.id);
       loadCategories();
       showToast(msg, 'success');
     },
-    onError: (err) => showToast(err, 'error'),
+    onError: (err, tempId) => {
+      if (tempId) {
+        setPhastes((prev) => prev.filter((p) => p.id !== tempId));
+      }
+      showToast(err, 'error');
+    },
   });
 
   // 6. Live SSE Updates
   useEvents({
     onPhasteCreated: (newItem) => {
-      setPhastes((prev) => [newItem, ...prev.filter((p) => p.id !== newItem.id)]);
+      setPhastes((prev) => {
+        if (prev.some((p) => p.id === newItem.id)) return prev;
+        return [newItem, ...prev];
+      });
       loadCategories();
     },
     onPhasteProcessed: (updatedItem) => {
       setPhastes((prev) =>
         prev.map((p) => (p.id === updatedItem.id ? updatedItem : p))
       );
-      if (selectedPhaste?.id === updatedItem.id) {
-        setSelectedPhaste(updatedItem);
-      }
       loadCategories();
     },
     onPhasteUpdated: (updatedItem) => {
@@ -221,58 +235,82 @@ export const App: React.FC = () => {
           p.id === updatedItem.id ? { ...p, ...updatedItem } : p
         )
       );
-      if (selectedPhaste?.id === updatedItem.id) {
-        setSelectedPhaste((prev) => (prev ? { ...prev, ...updatedItem } : null));
-      }
       loadCategories();
     },
     onPhasteDeleted: ({ id }) => {
       setPhastes((prev) => prev.filter((p) => p.id !== id));
-      if (selectedPhaste?.id === id) {
-        setSelectedPhaste(null);
-        setMobileScreen('list');
-      }
+      setSelectedPhasteId((curr) => (curr === id ? null : curr));
       loadCategories();
     },
   });
 
-  // 7. Note Handlers
-  const handleNewNote = async () => {
+  // Derived selected phaste without causing re-renders of the list!
+  const selectedPhaste = useMemo(() => {
+    if (!selectedPhasteId) return phastes[0] || null;
+    return phastes.find((p) => p.id === selectedPhasteId) || phastes[0] || null;
+  }, [phastes, selectedPhasteId]);
+
+  // 7. Instant Create Phaste Handler (0ms optimistic response)
+  const handleNewPhaste = async () => {
+    const tempId = `temp-${Date.now()}`;
+    const defaultTag = selectedTag ? `#${selectedTag} ` : '';
+    const initialText = `${defaultTag}\n\n`;
+
+    const optimistic: Phaste = {
+      id: tempId,
+      public_slug: 'pending',
+      kind: 'text',
+      status: 'ready',
+      title: '📝 Untitled Phaste',
+      content: initialText,
+      tags: selectedTag ? [selectedTag] : [],
+      is_pinned: false,
+      is_archived: false,
+      is_trash: false,
+      is_todo: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata_context: {
+        author: { name: 'You', label: 'You', is_owner: true, source: 'local' },
+      },
+    };
+
+    // Deliver immediately to UI (<1ms)
+    setPhastes((prev) => [optimistic, ...prev]);
+    setSelectedPhasteId(tempId);
+    setMobileScreen('detail');
+
     try {
-      const defaultTag = selectedTag ? `#${selectedTag} ` : '';
-      const initialText = `${defaultTag}\n\n`;
-      const newNote = await createPhasteText(initialText, 'text', '📝 Untitled');
-      setPhastes((prev) => [newNote, ...prev]);
-      setSelectedPhaste(newNote);
-      setMobileScreen('detail');
+      const realItem = await createPhasteText(initialText, 'text', '📝 Untitled Phaste');
+      setPhastes((prev) => prev.map((p) => (p.id === tempId ? realItem : p)));
+      setSelectedPhasteId(realItem.id);
       loadCategories();
-      showToast('Created new note', 'success');
+      showToast('Created new phaste', 'success');
     } catch {
-      showToast('Failed to create note', 'error');
+      setPhastes((prev) => prev.filter((p) => p.id !== tempId));
+      showToast('Failed to create phaste', 'error');
     }
   };
 
+  // Instant note selection (0ms, zero network requests, no screen flash)
   const handleSelectPhaste = (p: Phaste) => {
-    setSelectedPhaste(p);
+    setSelectedPhasteId(p.id);
     setMobileScreen('detail');
   };
 
   const handleTogglePin = (p: Phaste) => {
     if (p.is_pinned) {
-      // Prompt unpin confirmation dialog
       setUnpinTarget(p);
     } else {
-      // Pin immediately
       updatePhaste(p.id, { is_pinned: true })
         .then((updated) => {
           setPhastes((prev) =>
             prev.map((item) => (item.id === p.id ? updated : item))
           );
-          if (selectedPhaste?.id === p.id) setSelectedPhaste(updated);
           loadCategories();
-          showToast('Pinned note to top', 'success');
+          showToast('Pinned phaste to top', 'success');
         })
-        .catch(() => showToast('Failed to pin note', 'error'));
+        .catch(() => showToast('Failed to pin phaste', 'error'));
     }
   };
 
@@ -285,27 +323,24 @@ export const App: React.FC = () => {
         setPhastes((prev) =>
           prev.map((item) => (item.id === target.id ? updated : item))
         );
-        if (selectedPhaste?.id === target.id) setSelectedPhaste(updated);
         loadCategories();
-        showToast('Unpinned note', 'info');
+        showToast('Unpinned phaste', 'info');
       })
-      .catch(() => showToast('Failed to unpin note', 'error'));
+      .catch(() => showToast('Failed to unpin phaste', 'error'));
   };
 
   const handleDeletePhaste = async (p: Phaste) => {
     try {
       if (p.is_trash) {
-        // Permanent delete
         await deletePhaste(p.id);
         showToast('Permanently deleted phaste', 'info');
       } else {
-        // Move to trash
         await updatePhaste(p.id, { is_trash: true });
-        showToast('Moved note to Trash', 'info');
+        showToast('Moved phaste to Trash', 'info');
       }
       setPhastes((prev) => prev.filter((item) => item.id !== p.id));
-      if (selectedPhaste?.id === p.id) {
-        setSelectedPhaste(null);
+      if (selectedPhasteId === p.id) {
+        setSelectedPhasteId(null);
         setMobileScreen('list');
       }
       loadCategories();
@@ -314,13 +349,10 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleNoteUpdated = (updated: Partial<Phaste> & { id: string }) => {
+  const handlePhasteUpdated = (updated: Partial<Phaste> & { id: string }) => {
     setPhastes((prev) =>
       prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
     );
-    if (selectedPhaste?.id === updated.id) {
-      setSelectedPhaste((prev) => (prev ? { ...prev, ...updated } : null));
-    }
     loadCategories();
   };
 
@@ -329,7 +361,7 @@ export const App: React.FC = () => {
     if (selectedTag) return `#${selectedTag}`;
     switch (selectedCollection) {
       case 'all':
-        return 'Notes';
+        return 'Phastes';
       case 'untagged':
         return 'Untagged';
       case 'todo':
@@ -345,14 +377,14 @@ export const App: React.FC = () => {
       case 'trash':
         return 'Trash';
       default:
-        return 'Notes';
+        return 'Phastes';
     }
   }, [selectedCollection, selectedTag]);
 
   const displayedPhastes = searchResults !== null ? searchResults : phastes;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#1b1614] text-[#3e2723] dark:text-[#efebe9] font-sans antialiased">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f5f5f7] dark:bg-[#1b1614] text-[#3e2723] dark:text-[#efebe9] font-sans antialiased">
       {/* Drag & Drop Visual Overlay */}
       {isDragging && (
         <div className="fixed inset-0 z-50 bg-[#8d6e63]/20 backdrop-blur-sm border-4 border-dashed border-[#8d6e63] flex flex-col items-center justify-center pointer-events-none animate-in fade-in">
@@ -389,7 +421,7 @@ export const App: React.FC = () => {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Pane 2: Notes List Column */}
+      {/* Pane 2: Phastes List Column */}
       <div
         className={`${
           mobileScreen === 'list' ? 'flex' : 'hidden'
@@ -400,7 +432,7 @@ export const App: React.FC = () => {
           selectedPhaste={selectedPhaste}
           onSelectPhaste={handleSelectPhaste}
           activeTitle={activeTitle}
-          onNewNote={handleNewNote}
+          onNewPhaste={handleNewPhaste}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onTogglePin={handleTogglePin}
@@ -410,7 +442,7 @@ export const App: React.FC = () => {
         />
       </div>
 
-      {/* Pane 3: Note Canvas */}
+      {/* Pane 3: Phaste Canvas */}
       <div
         className={`${
           mobileScreen === 'detail' ? 'flex' : 'hidden'
@@ -418,7 +450,7 @@ export const App: React.FC = () => {
       >
         <NoteCanvas
           phaste={selectedPhaste}
-          onUpdate={handleNoteUpdated}
+          onUpdate={handlePhasteUpdated}
           onDelete={handleDeletePhaste}
           onTogglePin={handleTogglePin}
           onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
@@ -438,7 +470,7 @@ export const App: React.FC = () => {
           phaste={selectedPhaste}
           onClose={() => setIsInspectorOpen(false)}
           onPhasteUpdated={(updated) => {
-            handleNoteUpdated(updated);
+            handlePhasteUpdated(updated);
             loadCategories();
           }}
           onShowToast={showToast}

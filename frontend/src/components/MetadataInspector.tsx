@@ -72,7 +72,7 @@ export const MetadataInspector: React.FC<MetadataInspectorProps> = ({
           <span className="w-5 h-5 rounded-full bg-[#8d6e63]/20 flex items-center justify-center text-xs text-[#8d6e63] dark:text-[#d7ccc8]">
             i
           </span>
-          <span>Note Inspector</span>
+          <span>Phaste Inspector</span>
         </div>
         <button
           onClick={onClose}
@@ -166,7 +166,7 @@ export const MetadataInspector: React.FC<MetadataInspectorProps> = ({
           </div>
         </div>
 
-        {/* Note Statistics */}
+        {/* Phaste Statistics */}
         <div className="p-3 rounded-xl bg-white dark:bg-[#2d2421] border border-[#e5e2da] dark:border-[#4e342e]/50 space-y-2">
           <span className="font-semibold text-[#3e2723] dark:text-[#efebe9]">Statistics</span>
           <div className="grid grid-cols-3 gap-2 pt-1 text-center">

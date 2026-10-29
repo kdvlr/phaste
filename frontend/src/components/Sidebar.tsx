@@ -75,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen = false,
   onCloseMobile,
 }) => {
-  const [isNotesExpanded, setIsNotesExpanded] = useState(true);
+  const [isPhastesExpanded, setIsPhastesExpanded] = useState(true);
 
   const handleSelectCollection = (col: CollectionType) => {
     onSelectTag(null);
@@ -135,22 +135,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Scrollable Navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 text-sm">
-          {/* Notes Accordion */}
+          {/* Phastes Accordion */}
           <div>
             <button
-              onClick={() => setIsNotesExpanded(!isNotesExpanded)}
+              onClick={() => setIsPhastesExpanded(!isPhastesExpanded)}
               className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#a1887f] hover:text-[#efebe9] transition-colors"
             >
               <div className="flex items-center space-x-2">
                 <FileText className="w-3.5 h-3.5 text-[#d7ccc8]" />
-                <span>Notes</span>
+                <span>Phastes</span>
               </div>
-              {isNotesExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              {isPhastesExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
 
-            {isNotesExpanded && (
+            {isPhastesExpanded && (
               <div className="mt-1 space-y-0.5">
-                {/* All Notes */}
+                {/* All Phastes */}
                 <button
                   onClick={() => handleSelectCollection('all')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
@@ -161,7 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="flex items-center space-x-2.5">
                     <FileText className="w-4 h-4 text-[#a1887f]" />
-                    <span>All Notes</span>
+                    <span>All Phastes</span>
                   </div>
                   <span className="text-xs px-1.5 py-0.2 text-[#a1887f]">
                     {collections.all}
@@ -306,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="mt-1 space-y-0.5">
               {categories.length === 0 ? (
                 <div className="px-3 py-2 text-xs text-[#a1887f]/70 italic">
-                  No tags yet. Use #hashtags in notes to auto-categorize.
+                  No tags yet. Use #hashtags in phastes to auto-categorize.
                 </div>
               ) : (
                 categories.map((cat) => {

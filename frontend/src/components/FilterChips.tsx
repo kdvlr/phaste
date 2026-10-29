@@ -20,7 +20,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
     { id: 'link', label: 'Links', icon: Link2 },
     { id: 'image', label: 'Images', icon: Image },
     { id: 'video', label: 'Videos', icon: Video },
-    { id: 'text', label: 'Notes', icon: FileText },
+    { id: 'text', label: 'Phastes', icon: FileText },
     { id: 'richtext', label: 'Rich Text', icon: Code2 },
   ];
 

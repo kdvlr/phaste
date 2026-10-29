@@ -59,6 +59,9 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
 
   // Sync state when active phaste changes
   useEffect(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
     if (phaste) {
       setTitle(phaste.title || '');
       setContent(phaste.content || phaste.ocr_transcript || '');
@@ -76,9 +79,9 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
         <div className="w-16 h-16 rounded-2xl bg-[#f5f5f7] dark:bg-[#241e1b] flex items-center justify-center text-3xl mb-4 shadow-sm">
           &#128221;
         </div>
-        <h3 className="text-base font-semibold text-[#3e2723] dark:text-[#efebe9]">No Note Selected</h3>
+        <h3 className="text-base font-semibold text-[#3e2723] dark:text-[#efebe9]">No Phaste Selected</h3>
         <p className="text-xs text-[#a1887f] max-w-sm mt-1">
-          Select a note from the list, paste anywhere with <kbd className="px-1.5 py-0.5 rounded bg-[#e5e2da] dark:bg-[#3a2e2a] font-mono text-[10px]">Cmd+V</kbd>, or drop files to create one.
+          Select a phaste from the list, paste anywhere with <kbd className="px-1.5 py-0.5 rounded bg-[#e5e2da] dark:bg-[#3a2e2a] font-mono text-[10px]">Cmd+V</kbd>, or drop files to create one.
         </p>
       </div>
     );
@@ -200,7 +203,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
               className="flex items-center space-x-1 text-xs text-[#8d6e63] dark:text-[#a1887f] font-medium p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 md:hidden"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>Notes</span>
+              <span>Phastes</span>
             </button>
           )}
 
@@ -243,7 +246,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
                 ? 'text-[#ff5f56] bg-[#ff5f56]/10'
                 : 'text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-black/5 dark:hover:bg-white/5'
             }`}
-            title={phaste.is_pinned ? 'Unpin note' : 'Pin note'}
+            title={phaste.is_pinned ? 'Unpin phaste' : 'Pin phaste'}
           >
             <Pin className="w-4 h-4" />
           </button>
@@ -265,7 +268,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
                 ? 'bg-[#8d6e63]/20 text-[#3e2723] dark:text-white'
                 : 'text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-black/5 dark:hover:bg-white/5'
             }`}
-            title="Note Details Inspector"
+            title="Phaste Details Inspector"
           >
             <Info className="w-4 h-4" />
           </button>
@@ -305,7 +308,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
             type="text"
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="🐼 Note Title..."
+            placeholder="🐼 Phaste Title..."
             className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent text-[#3e2723] dark:text-[#efebe9] border-none focus:outline-none focus:ring-0 placeholder:text-[#a1887f]/50"
           />
         </div>
@@ -368,7 +371,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
               ref={textareaRef}
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
-              placeholder="Write note in haste... Markdown, #hashtags, and - [ ] checkboxes supported."
+              placeholder="Write phaste in haste... Markdown, #hashtags, and - [ ] checkboxes supported."
               className="w-full min-h-[350px] bg-transparent text-[#3e2723] dark:text-[#efebe9] font-sans text-sm leading-relaxed border-none focus:outline-none resize-none placeholder:text-[#a1887f]/50"
               autoFocus
             />
