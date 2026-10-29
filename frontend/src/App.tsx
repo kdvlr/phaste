@@ -1,52 +1,83 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { UploadCloud } from 'lucide-react';
 import {
-  Zap,
-  UploadCloud,
-  Sparkles,
-  RefreshCw,
-  SlidersHorizontal,
-} from 'lucide-react';
-import { Phaste, SearchResultItem, SnackbarMessage } from './types';
+  Phaste,
+  CollectionType,
+  CategoryItem,
+  SystemCollections,
+  SnackbarMessage,
+} from './types';
 import {
   fetchPhastes,
+  fetchCategories,
   searchPhastes,
   createPhasteText,
   uploadPhasteFile,
   updatePhaste,
   deletePhaste,
+  requestAndCacheLocation,
+  requestLocationPermission,
+  getLocationStatus,
 } from './api';
-import { Omnibar } from './components/Omnibar';
-import { FilterChips } from './components/FilterChips';
-import { PhasteFeed } from './components/PhasteFeed';
-import { ImageLightbox } from './components/ImageLightbox';
-import { MetadataModal } from './components/MetadataModal';
-import { PhasteDetailModal } from './components/PhasteDetailModal';
-import { ThemeToggle } from './components/ThemeToggle';
-import { Snackbar } from './components/Snackbar';
+import { Sidebar } from './components/Sidebar';
+import { NotesList } from './components/NotesList';
+import { NoteCanvas } from './components/NoteCanvas';
+import { MetadataInspector } from './components/MetadataInspector';
 import { UnpinConfirmDialog } from './components/UnpinConfirmDialog';
+import { Snackbar } from './components/Snackbar';
 import { useAmbientCapture } from './hooks/useAmbientCapture';
 import { useEvents } from './hooks/useEvents';
-import { requestAndCacheLocation, requestLocationPermission, getLocationStatus } from './api';
-import { getStoredTheme, applyTheme, subscribeToThemeChanges, ThemeMode } from './utils/theme';
+import {
+  getStoredTheme,
+  applyTheme,
+  subscribeToThemeChanges,
+  ThemeMode,
+} from './utils/theme';
 
 export const App: React.FC = () => {
-  const [phastes, setPhastes] = useState<Phaste[]>([]);
-  const [searchResults, setSearchResults] = useState<SearchResultItem[] | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedKind, setSelectedKind] = useState('all');
-  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeLightbox, setActiveLightbox] = useState<Phaste | null>(null);
-  const [selectedPhasteForModal, setSelectedPhasteForModal] = useState<Phaste | null>(null);
-  const [selectedDetailPhaste, setSelectedDetailPhaste] = useState<Phaste | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'granted' | 'prompt' | 'denied' | 'unsupported'>('prompt');
-  const [theme, setTheme] = useState<ThemeMode>(getStoredTheme);
-  const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
-  const [unpinTarget, setUnpinTarget] = useState<Phaste | null>(null);
+  // Navigation & Filtering State
+  const [selectedCollection, setSelectedCollection] = useState<CollectionType>('all');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [collections, setCollections] = useState<SystemCollections>({
+    all: 0,
+    today: 0,
+    pinned: 0,
+    media: 0,
+    todo: 0,
+    untagged: 0,
+    archive: 0,
+    trash: 0,
+  });
 
-  const showToast = useCallback((text: string, type: 'info' | 'success' | 'error' = 'info') => {
-    setSnackbar({ id: String(Date.now()), text, type });
-  }, []);
+  // Notes & Content State
+  const [phastes, setPhastes] = useState<Phaste[]>([]);
+  const [selectedPhaste, setSelectedPhaste] = useState<Phaste | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Phaste[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Inspector & Dialogs State
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [unpinTarget, setUnpinTarget] = useState<Phaste | null>(null);
+  const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
+
+  // Mobile Drill-down Navigation: 'list' or 'detail' (sidebar opens via drawer)
+  const [mobileScreen, setMobileScreen] = useState<'list' | 'detail'>('list');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Theme & Location
+  const [theme, setTheme] = useState<ThemeMode>(getStoredTheme);
+  const [locationStatus, setLocationStatus] = useState<
+    'granted' | 'prompt' | 'denied' | 'unsupported'
+  >('prompt');
+
+  const showToast = useCallback(
+    (text: string, type: 'info' | 'success' | 'error' = 'info') => {
+      setSnackbar({ id: String(Date.now()), text, type });
+    },
+    []
+  );
 
   // 1. Initial Theme & Geolocation Setup
   useEffect(() => {
@@ -63,7 +94,10 @@ export const App: React.FC = () => {
   const handleThemeChange = (newTheme: ThemeMode) => {
     setTheme(newTheme);
     applyTheme(newTheme);
-    showToast(`Theme switched to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} mode`, 'info');
+    showToast(
+      `Theme switched to ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} mode`,
+      'info'
+    );
   };
 
   useEffect(() => {
@@ -82,31 +116,57 @@ export const App: React.FC = () => {
     }
   };
 
+  // 2. Fetch Categories & Counts
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await fetchCategories();
+      setCollections(data.collections);
+      setCategories(data.categories);
+    } catch {
+      // silently tolerate initial offline
+    }
+  }, []);
+
+  // 3. Fetch Phastes for active collection / tag
   const loadPhastes = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await fetchPhastes(
         1,
         60,
-        selectedKind === 'all' ? undefined : selectedKind,
-        showPinnedOnly ? true : undefined
+        undefined,
+        undefined,
+        selectedCollection,
+        selectedTag || undefined
       );
       setPhastes(data.items);
-    } catch (err: any) {
-      showToast('Could not connect to phaste service', 'error');
+      // Automatically select the first note if none is selected on desktop
+      if (!selectedPhaste && data.items.length > 0 && window.innerWidth >= 768) {
+        setSelectedPhaste(data.items[0]);
+      } else if (selectedPhaste) {
+        // Refresh selected note if present in list
+        const refreshed = data.items.find((p) => p.id === selectedPhaste.id);
+        if (refreshed) setSelectedPhaste(refreshed);
+      }
+    } catch {
+      showToast('Failed to load notes', 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedKind, showPinnedOnly, showToast]);
+  }, [selectedCollection, selectedTag, selectedPhaste, showToast]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults(null);
       loadPhastes();
     }
-  }, [selectedKind, showPinnedOnly, searchQuery, loadPhastes]);
+  }, [selectedCollection, selectedTag, searchQuery, loadPhastes]);
 
-  // 2. Debounced Hybrid Search
+  // 4. Debounced Search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults(null);
@@ -117,8 +177,8 @@ export const App: React.FC = () => {
       setIsLoading(true);
       try {
         const res = await searchPhastes(searchQuery.trim());
-        setSearchResults(res.results);
-      } catch (err) {
+        setSearchResults(res.results.map((r) => r.phaste));
+      } catch {
         showToast('Search query failed', 'error');
       } finally {
         setIsLoading(false);
@@ -128,251 +188,279 @@ export const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, showToast]);
 
-  // 3. Ambient Global Capture Hook (Cmd+V anywhere & Drag-Drop)
-  const { isDragging, isSubmitting } = useAmbientCapture({
+  // 5. Global Ambient Capture (Cmd+V clipboard & Drag-and-Drop)
+  const { isDragging } = useAmbientCapture({
     onSuccess: (newItem, msg) => {
       setPhastes((prev) => [newItem, ...prev.filter((p) => p.id !== newItem.id)]);
+      setSelectedPhaste(newItem);
+      setMobileScreen('detail');
+      loadCategories();
       showToast(msg, 'success');
     },
     onError: (err) => showToast(err, 'error'),
   });
 
-  // 4. Live Server-Sent Events (SSE) background updates
+  // 6. Live SSE Updates
   useEvents({
     onPhasteCreated: (newItem) => {
       setPhastes((prev) => [newItem, ...prev.filter((p) => p.id !== newItem.id)]);
+      loadCategories();
     },
     onPhasteProcessed: (updatedItem) => {
-      setPhastes((prev) => prev.map((p) => (p.id === updatedItem.id ? updatedItem : p)));
-      if (searchResults) {
-        setSearchResults((prev) =>
-          prev?.map((r) => (r.phaste.id === updatedItem.id ? { ...r, phaste: updatedItem } : r)) || null
-        );
+      setPhastes((prev) =>
+        prev.map((p) => (p.id === updatedItem.id ? updatedItem : p))
+      );
+      if (selectedPhaste?.id === updatedItem.id) {
+        setSelectedPhaste(updatedItem);
       }
-      setSelectedDetailPhaste((prev) => (prev?.id === updatedItem.id ? updatedItem : prev));
+      loadCategories();
+    },
+    onPhasteUpdated: (updatedItem) => {
+      setPhastes((prev) =>
+        prev.map((p) =>
+          p.id === updatedItem.id ? { ...p, ...updatedItem } : p
+        )
+      );
+      if (selectedPhaste?.id === updatedItem.id) {
+        setSelectedPhaste((prev) => (prev ? { ...prev, ...updatedItem } : null));
+      }
+      loadCategories();
     },
     onPhasteDeleted: ({ id }) => {
       setPhastes((prev) => prev.filter((p) => p.id !== id));
-      if (searchResults) {
-        setSearchResults((prev) => prev?.filter((r) => r.phaste.id !== id) || null);
+      if (selectedPhaste?.id === id) {
+        setSelectedPhaste(null);
+        setMobileScreen('list');
       }
-      setSelectedDetailPhaste((prev) => (prev?.id === id ? null : prev));
+      loadCategories();
     },
   });
 
-  // 5. Actions: Pin Toggle & Delete
-  const executePinUpdate = async (id: string, pin: boolean) => {
+  // 7. Note Handlers
+  const handleNewNote = async () => {
     try {
-      const updated = await updatePhaste(id, { is_pinned: pin });
-      setPhastes((prev) => prev.map((p) => (p.id === id ? updated : p)));
-      if (searchResults) {
-        setSearchResults((prev) =>
-          prev?.map((r) => (r.phaste.id === id ? { ...r, phaste: updated } : r)) || null
-        );
-      }
-      setSelectedDetailPhaste((prev) => (prev?.id === id ? updated : prev));
-      showToast(updated.is_pinned ? 'Pinned to top' : 'Unpinned');
+      const defaultTag = selectedTag ? `#${selectedTag} ` : '';
+      const initialText = `${defaultTag}\n\n`;
+      const newNote = await createPhasteText(initialText, 'text', '📝 Untitled');
+      setPhastes((prev) => [newNote, ...prev]);
+      setSelectedPhaste(newNote);
+      setMobileScreen('detail');
+      loadCategories();
+      showToast('Created new note', 'success');
     } catch {
-      showToast('Failed to update pin status', 'error');
+      showToast('Failed to create note', 'error');
     }
   };
 
-  const handlePinToggle = (id: string, current: boolean) => {
-    if (current) {
-      // Removing a pin -> Prompt confirmation dialog
-      const target =
-        phastes.find((p) => p.id === id) ||
-        (selectedDetailPhaste?.id === id ? selectedDetailPhaste : null) ||
-        searchResults?.find((r) => r.phaste.id === id)?.phaste ||
-        ({ id, is_pinned: true, kind: 'text' } as Phaste);
-      setUnpinTarget(target);
+  const handleSelectPhaste = (p: Phaste) => {
+    setSelectedPhaste(p);
+    setMobileScreen('detail');
+  };
+
+  const handleTogglePin = (p: Phaste) => {
+    if (p.is_pinned) {
+      // Prompt unpin confirmation dialog
+      setUnpinTarget(p);
     } else {
-      // Adding a pin -> pin immediately without confirmation
-      executePinUpdate(id, true);
+      // Pin immediately
+      updatePhaste(p.id, { is_pinned: true })
+        .then((updated) => {
+          setPhastes((prev) =>
+            prev.map((item) => (item.id === p.id ? updated : item))
+          );
+          if (selectedPhaste?.id === p.id) setSelectedPhaste(updated);
+          loadCategories();
+          showToast('Pinned note to top', 'success');
+        })
+        .catch(() => showToast('Failed to pin note', 'error'));
     }
   };
 
   const handleConfirmUnpin = () => {
     if (!unpinTarget) return;
-    const targetId = unpinTarget.id;
+    const target = unpinTarget;
     setUnpinTarget(null);
-    executePinUpdate(targetId, false);
+    updatePhaste(target.id, { is_pinned: false })
+      .then((updated) => {
+        setPhastes((prev) =>
+          prev.map((item) => (item.id === target.id ? updated : item))
+        );
+        if (selectedPhaste?.id === target.id) setSelectedPhaste(updated);
+        loadCategories();
+        showToast('Unpinned note', 'info');
+      })
+      .catch(() => showToast('Failed to unpin note', 'error'));
   };
 
-  const handleCancelUnpin = () => {
-    setUnpinTarget(null);
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleDeletePhaste = async (p: Phaste) => {
     try {
-      await deletePhaste(id);
-      setPhastes((prev) => prev.filter((p) => p.id !== id));
-      showToast('Phaste deleted');
+      if (p.is_trash) {
+        // Permanent delete
+        await deletePhaste(p.id);
+        showToast('Permanently deleted phaste', 'info');
+      } else {
+        // Move to trash
+        await updatePhaste(p.id, { is_trash: true });
+        showToast('Moved note to Trash', 'info');
+      }
+      setPhastes((prev) => prev.filter((item) => item.id !== p.id));
+      if (selectedPhaste?.id === p.id) {
+        setSelectedPhaste(null);
+        setMobileScreen('list');
+      }
+      loadCategories();
     } catch {
       showToast('Failed to delete phaste', 'error');
     }
   };
 
+  const handleNoteUpdated = (updated: Partial<Phaste> & { id: string }) => {
+    setPhastes((prev) =>
+      prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+    );
+    if (selectedPhaste?.id === updated.id) {
+      setSelectedPhaste((prev) => (prev ? { ...prev, ...updated } : null));
+    }
+    loadCategories();
+  };
+
+  // Header Title in middle column
+  const activeTitle = useMemo(() => {
+    if (selectedTag) return `#${selectedTag}`;
+    switch (selectedCollection) {
+      case 'all':
+        return 'Notes';
+      case 'untagged':
+        return 'Untagged';
+      case 'todo':
+        return 'Todo';
+      case 'today':
+        return 'Today';
+      case 'pinned':
+        return 'Pinned';
+      case 'media':
+        return 'Media';
+      case 'archive':
+        return 'Archive';
+      case 'trash':
+        return 'Trash';
+      default:
+        return 'Notes';
+    }
+  }, [selectedCollection, selectedTag]);
+
+  const displayedPhastes = searchResults !== null ? searchResults : phastes;
+
   return (
-    <div className="min-h-screen bg-md3-surface text-md3-on-surface flex flex-col">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#1b1614] text-[#3e2723] dark:text-[#efebe9] font-sans antialiased">
       {/* Drag & Drop Visual Overlay */}
       {isDragging && (
-        <div className="fixed inset-0 z-50 bg-md3-primary/20 backdrop-blur-sm border-4 border-dashed border-md3-primary flex flex-col items-center justify-center pointer-events-none animate-in fade-in">
-          <div className="p-6 rounded-md3-xl bg-md3-surface-container-high shadow-md3-4 flex flex-col items-center gap-3">
-            <UploadCloud className="w-12 h-12 text-md3-primary animate-bounce" />
-            <h2 className="text-lg font-bold text-md3-on-surface">Drop to Phaste</h2>
-            <p className="text-xs text-md3-on-surface-variant">Instant capture of image, video, or files</p>
+        <div className="fixed inset-0 z-50 bg-[#8d6e63]/20 backdrop-blur-sm border-4 border-dashed border-[#8d6e63] flex flex-col items-center justify-center pointer-events-none animate-in fade-in">
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#2d2421] shadow-2xl flex flex-col items-center gap-3">
+            <UploadCloud className="w-12 h-12 text-[#8d6e63] animate-bounce" />
+            <h2 className="text-lg font-bold text-[#3e2723] dark:text-[#efebe9]">
+              Drop to Phaste
+            </h2>
+            <p className="text-xs text-[#a1887f]">
+              Instant capture of image, video, or files
+            </p>
           </div>
         </div>
       )}
 
-      {/* App Header */}
-      <header className="sticky top-0 z-40 bg-md3-surface/90 backdrop-blur-md border-b border-md3-outline-variant/30 px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-md3-primary-container flex items-center justify-center text-md3-on-primary-container shadow-md3-1">
-            <Zap className="w-4 h-4 fill-current stroke-[2.5]" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-md3-on-surface flex items-center gap-2">
-              <span>phaste</span>
-              <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded-full bg-md3-primary-container text-md3-on-primary-container tracking-wider">
-                beta
-              </span>
-            </h1>
-          </div>
-        </div>
+      {/* Pane 1: Left Sidebar (Desktop + Mobile Drawer) */}
+      <Sidebar
+        selectedCollection={selectedCollection}
+        onSelectCollection={(col) => {
+          setSelectedCollection(col);
+          setSelectedTag(null);
+        }}
+        selectedTag={selectedTag}
+        onSelectTag={(tag) => {
+          setSelectedTag(tag);
+        }}
+        categories={categories}
+        collections={collections}
+        theme={theme}
+        onThemeChange={handleThemeChange}
+        locationStatus={locationStatus}
+        onEnableLocation={handleEnableLocation}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
 
-        {/* Action Controls & Ambient Status */}
-        <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-md3-on-surface-variant">
-          {/* Light / Auto / Dark Mode Toggle */}
-          <ThemeToggle theme={theme} onThemeChange={handleThemeChange} />
-
-          {/* Location Permission Status / Trigger */}
-          {locationStatus === 'granted' ? (
-            <span
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold"
-              title="High-accuracy GPS location attached to pastes"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>📍 GPS Active</span>
-            </span>
-          ) : locationStatus === 'prompt' ? (
-            <button
-              onClick={handleEnableLocation}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-md3-surface-container-high hover:bg-md3-surface-container-highest border border-md3-outline-variant/40 text-md3-on-surface text-xs font-medium transition-colors cursor-pointer"
-              title="Click to allow browser location credentials for pastes"
-            >
-              <span>📍 Enable Location</span>
-            </button>
-          ) : locationStatus === 'denied' ? (
-            <span
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-md3-surface-container-high text-md3-on-surface-variant/80 text-xs"
-              title="Location permission denied in browser settings"
-            >
-              <span>📍 Location: Blocked</span>
-            </span>
-          ) : null}
-
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>You (Owner)</span>
-          </span>
-
-          {isSubmitting ? (
-            <span className="flex items-center gap-1.5 text-md3-primary font-semibold text-xs">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving...</span>
-            </span>
-          ) : (
-            <span className="hidden lg:flex items-center gap-1.5 text-xs text-md3-on-surface-variant font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Cmd+V to paste</span>
-            </span>
-          )}
-        </div>
-      </header>
-
-      {/* Main Content Body */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6">
-        {/* Omnibar (Unified search and capture control) */}
-        <Omnibar
+      {/* Pane 2: Notes List Column */}
+      <div
+        className={`${
+          mobileScreen === 'list' ? 'flex' : 'hidden'
+        } md:flex flex-col h-full`}
+      >
+        <NotesList
+          phastes={displayedPhastes}
+          selectedPhaste={selectedPhaste}
+          onSelectPhaste={handleSelectPhaste}
+          activeTitle={activeTitle}
+          onNewNote={handleNewNote}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onQuickPasteText={async (text) => {
-            try {
-              const res = await createPhasteText(text);
-              setPhastes((prev) => [res, ...prev]);
-              showToast('Captured in haste!', 'success');
-            } catch (err: any) {
-              showToast(err.message, 'error');
-            }
-          }}
-          onUploadFile={async (file) => {
-            try {
-              const res = await uploadPhasteFile(file);
-              setPhastes((prev) => [res, ...prev]);
-              showToast('Uploaded in haste!', 'success');
-            } catch (err: any) {
-              showToast(err.message, 'error');
-            }
-          }}
-        />
-
-        {/* Filter Chips */}
-        {!searchQuery && (
-          <div className="mb-6">
-            <FilterChips
-              selectedKind={selectedKind}
-              onSelectKind={setSelectedKind}
-              showPinnedOnly={showPinnedOnly}
-              onTogglePinned={() => setShowPinnedOnly((v) => !v)}
-            />
-          </div>
-        )}
-
-        {/* Feed / Results */}
-        <PhasteFeed
-          items={phastes}
-          searchResults={searchResults}
+          onTogglePin={handleTogglePin}
+          onDeletePhaste={handleDeletePhaste}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           isLoading={isLoading}
-          onPinToggle={handlePinToggle}
-          onDelete={handleDelete}
-          onSelect={(p) => setSelectedDetailPhaste(p)}
-          onImageClick={setActiveLightbox}
-          onInspect={setSelectedPhasteForModal}
-          onToast={showToast}
         />
-      </main>
+      </div>
 
-      {/* 4/5th Big Content Modal with 1/5th Context Sidebar (Request 4) */}
-      <PhasteDetailModal
-        phaste={selectedDetailPhaste}
-        isOpen={Boolean(selectedDetailPhaste)}
-        onClose={() => setSelectedDetailPhaste(null)}
-        onPinToggle={handlePinToggle}
-        onToast={showToast}
-      />
+      {/* Pane 3: Note Canvas */}
+      <div
+        className={`${
+          mobileScreen === 'detail' ? 'flex' : 'hidden'
+        } md:flex flex-1 flex-col h-full overflow-hidden`}
+      >
+        <NoteCanvas
+          phaste={selectedPhaste}
+          onUpdate={handleNoteUpdated}
+          onDelete={handleDeletePhaste}
+          onTogglePin={handleTogglePin}
+          onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+          isInspectorOpen={isInspectorOpen}
+          onBackMobile={() => setMobileScreen('list')}
+          onShowToast={showToast}
+          onTagClick={(tag) => {
+            setSelectedTag(tag);
+            if (window.innerWidth < 768) setMobileScreen('list');
+          }}
+        />
+      </div>
 
-      {/* Fullscreen Image Lightbox Modal */}
-      <ImageLightbox phaste={activeLightbox} onClose={() => setActiveLightbox(null)} />
-
-      {/* Capture Context Inspector Modal */}
-      <MetadataModal
-        phaste={selectedPhasteForModal}
-        isOpen={Boolean(selectedPhasteForModal)}
-        onClose={() => setSelectedPhasteForModal(null)}
-      />
+      {/* Pane 4 / Slide-over: Metadata Inspector */}
+      {isInspectorOpen && selectedPhaste && (
+        <MetadataInspector
+          phaste={selectedPhaste}
+          onClose={() => setIsInspectorOpen(false)}
+          onPhasteUpdated={(updated) => {
+            handleNoteUpdated(updated);
+            loadCategories();
+          }}
+          onShowToast={showToast}
+        />
+      )}
 
       {/* Unpin Confirmation Dialog */}
       <UnpinConfirmDialog
         isOpen={Boolean(unpinTarget)}
         phaste={unpinTarget}
         onConfirm={handleConfirmUnpin}
-        onCancel={handleCancelUnpin}
+        onCancel={() => setUnpinTarget(null)}
       />
 
-      {/* Non-blocking Transient Material 3 Snackbar */}
-      <Snackbar message={snackbar} onDismiss={() => setSnackbar(null)} />
+      {/* Toast Snackbar Notification */}
+      {snackbar && (
+        <Snackbar
+          message={snackbar}
+          onDismiss={() => setSnackbar(null)}
+        />
+      )}
     </div>
   );
 };
+export default App;

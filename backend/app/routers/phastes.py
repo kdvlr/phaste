@@ -2,6 +2,7 @@ import os
 import re
 import uuid
 import asyncio
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -35,6 +36,9 @@ from app.services.embedding_service import embedding_service
 from app.services.geocoding_service import extract_exif_metadata, reverse_geocode_coordinates
 from app.services.ai_service import ai_service
 from app.utils.event_bus import event_bus
+from app.utils.hashtags import extract_hashtags
+
+logger = logging.getLogger("phaste.router")
 
 router = APIRouter(prefix="/api/phastes", tags=["Phastes"])
 
@@ -45,6 +49,78 @@ def is_valid_url(s: Optional[str]) -> bool:
     if not s:
         return False
     return bool(re.match(URL_REGEX, s.strip(), re.IGNORECASE))
+
+
+async def backfill_existing_phastes():
+    """
+    Background worker that runs on startup to extract hashtags and generate
+    AI category tags + smart titles for existing legacy phastes that have empty tags.
+    """
+    await asyncio.sleep(2)
+    logger.info("[Backfill] Starting category and hashtag backfill for legacy phastes...")
+    try:
+        async with async_session_factory() as session:
+            stmt = select(Phaste).where(
+                and_(
+                    Phaste.is_trash == False,
+                    or_(Phaste.tags == None, func.jsonb_array_length(Phaste.tags) == 0)
+                )
+            ).order_by(Phaste.created_at.desc()).limit(100)
+            res = await session.execute(stmt)
+            phastes_to_backfill = res.scalars().all()
+
+            if not phastes_to_backfill:
+                logger.info("[Backfill] No untagged phastes to backfill.")
+                return
+
+            logger.info(f"[Backfill] Found {len(phastes_to_backfill)} phastes to enrich.")
+            for p in phastes_to_backfill:
+                try:
+                    # 1. Check for inline hashtags
+                    extracted = extract_hashtags((p.content or "") + " " + (p.title or ""))
+
+                    # 2. Check for todo markdown checkbox
+                    is_todo = bool(re.search(r"-\s*\[([ xX])\]", p.content or ""))
+                    if is_todo and not p.is_todo:
+                        p.is_todo = True
+
+                    if extracted:
+                        p.tags = extracted
+                        await session.commit()
+                        logger.info(f"[Backfill] Extracted hashtags for {p.id}: {extracted}")
+                    elif p.content or p.title or p.ocr_transcript:
+                        # 3. Use AI enrichment if no explicit hashtags
+                        meta = dict(p.metadata_context or {})
+                        ai_data = await ai_service.enrich_paste(
+                            title=p.title,
+                            content=p.content,
+                            ocr_transcript=p.ocr_transcript,
+                            kind=p.kind,
+                            og_metadata=meta.get("og") if isinstance(meta.get("og"), dict) else None,
+                        )
+                        if ai_data:
+                            tags = [t.lower().lstrip("#").strip() for t in ai_data.get("tags", []) if t]
+                            p.tags = tags
+                            meta["ai"] = {
+                                "summary": ai_data.get("summary"),
+                                "tags": tags,
+                                "model": ai_data.get("model"),
+                            }
+                            if ai_data.get("suggested_title") and (
+                                not p.title
+                                or p.title in ("upload", "Untitled", f"{p.id}")
+                                or p.title.endswith(".bin")
+                            ):
+                                p.title = ai_data["suggested_title"]
+                            p.metadata_context = meta
+                            await session.commit()
+                            logger.info(f"[Backfill] AI enriched {p.id} with title='{p.title}', tags={tags}")
+                    await asyncio.sleep(0.5)
+                except Exception as item_err:
+                    logger.warning(f"[Backfill] Failed enriching item {p.id}: {item_err}")
+            logger.info("[Backfill] Category backfill complete.")
+    except Exception as e:
+        logger.error(f"[Backfill] Backfill worker error: {e}")
 
 
 async def run_background_enrichment(phaste_id: uuid.UUID):
@@ -138,9 +214,10 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                     og_metadata=meta.get("og") if isinstance(meta.get("og"), dict) else None,
                 )
                 if ai_data:
+                    ai_tags = [t.lower().lstrip("#").strip() for t in ai_data.get("tags", []) if t]
                     meta["ai"] = {
                         "summary": ai_data.get("summary"),
-                        "tags": ai_data.get("tags", []),
+                        "tags": ai_tags,
                         "model": ai_data.get("model"),
                     }
                     if ai_data.get("suggested_title") and (
@@ -149,8 +226,17 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                         or item.title.endswith(".bin")
                     ):
                         item.title = ai_data["suggested_title"]
+
+                    current_tags = list(item.tags or [])
+                    if not current_tags and ai_tags:
+                        item.tags = ai_tags
+                    elif ai_tags:
+                        item.tags = list(dict.fromkeys(current_tags + ai_tags))
             except Exception as ai_err:
                 logger.warning("AI enrichment failed for %s: %s", phaste_id, ai_err)
+
+            if not item.is_todo and bool(re.search(r"-\s*\[([ xX])\]", item.content or "")):
+                item.is_todo = True
 
             item.metadata_context = meta
 
@@ -174,6 +260,8 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                 .values(
                     title=item.title,
                     status=item.status,
+                    tags=item.tags,
+                    is_todo=item.is_todo,
                     media_path=item.media_path,
                     thumbnail_path=item.thumbnail_path,
                     media_dimensions=item.media_dimensions,
@@ -591,12 +679,21 @@ async def create_phaste(
     # Initial TSVECTOR content
     search_text = f"{title or ''} {content or ''} {metadata_context.get('city', '')}"
 
+    # Extract inline hashtags and check for todo checkboxes
+    extracted_tags = extract_hashtags(f"{title or ''} {content or ''}")
+    is_todo = bool(re.search(r"-\s*\[([ xX])\]", content or ""))
+
     phaste = Phaste(
         id=new_id,
         kind=kind or "text",
         status="processing" if (kind in ("video", "image") or source_url) else "ready",
         title=title,
         content=content,
+        tags=extracted_tags,
+        is_todo=is_todo,
+        is_trash=False,
+        is_pinned=False,
+        is_archived=False,
         source_url=source_url,
         media_path=media_path,
         thumbnail_path=thumbnail_path,
@@ -623,15 +720,50 @@ async def create_phaste(
 @router.get("", response_model=PhasteListResponse)
 async def list_phastes(
     page: int = Query(1, ge=1),
-    limit: int = Query(30, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=100),
+    collection: Optional[str] = Query(None),
+    tag: Optional[str] = Query(None),
     kind: Optional[str] = Query(None),
     pinned: Optional[bool] = Query(None),
-    archived: bool = Query(False),
+    archived: Optional[bool] = Query(None),
+    trash: Optional[bool] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
     offset = (page - 1) * limit
-    conditions = [Phaste.is_archived == archived]
+    conditions = []
 
+    # Trash filtering: only show trash items if collection == "trash" or trash is True
+    if collection == "trash" or trash is True:
+        conditions.append(Phaste.is_trash == True)
+    else:
+        conditions.append(Phaste.is_trash == False)
+
+    # Archive filtering: only show archived items if collection == "archive" or archived is True
+    if collection == "archive" or archived is True:
+        conditions.append(Phaste.is_archived == True)
+    elif collection != "trash" and not trash:
+        conditions.append(Phaste.is_archived == False)
+
+    # Collection filters
+    if collection == "today":
+        now_utc = datetime.now(timezone.utc)
+        start_of_today = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        conditions.append(Phaste.created_at >= start_of_today)
+    elif collection == "pinned":
+        conditions.append(Phaste.is_pinned == True)
+    elif collection == "media":
+        conditions.append(or_(Phaste.kind.in_(["image", "video"]), Phaste.media_path.isnot(None)))
+    elif collection == "todo":
+        conditions.append(Phaste.is_todo == True)
+    elif collection == "untagged":
+        conditions.append(or_(Phaste.tags == None, func.jsonb_array_length(Phaste.tags) == 0))
+
+    # Tag filter
+    if tag:
+        tag_clean = tag.strip().lower().lstrip("#")
+        conditions.append(Phaste.tags.contains([tag_clean]))
+
+    # Explicit query parameters
     if kind:
         conditions.append(Phaste.kind == kind)
     if pinned is not None:
@@ -683,10 +815,22 @@ async def update_phaste(
         item.title = payload.title
     if payload.content is not None:
         item.content = payload.content
+        item.is_todo = bool(re.search(r"-\s*\[([ xX])\]", payload.content))
+        # Re-extract inline hashtags
+        extracted = extract_hashtags((payload.content or "") + " " + (item.title or ""))
+        if payload.tags is None:
+            # Merge with existing tags
+            item.tags = list(dict.fromkeys((item.tags or []) + extracted))
+    if payload.tags is not None:
+        item.tags = [t.strip().lower().lstrip("#") for t in payload.tags if t.strip()]
     if payload.is_pinned is not None:
         item.is_pinned = payload.is_pinned
     if payload.is_archived is not None:
         item.is_archived = payload.is_archived
+    if payload.is_trash is not None:
+        item.is_trash = payload.is_trash
+    if payload.is_todo is not None:
+        item.is_todo = payload.is_todo
 
     item.updated_at = datetime.now(timezone.utc)
     await db.commit()

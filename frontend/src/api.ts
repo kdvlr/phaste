@@ -1,4 +1,4 @@
-import { Phaste, SearchResponse } from './types';
+import { Phaste, SearchResponse, CategoriesResponse, CollectionType } from './types';
 
 const API_BASE = '/api';
 
@@ -143,9 +143,11 @@ export function getClientContext() {
 
 export async function fetchPhastes(
   page: number = 1,
-  limit: number = 30,
+  limit: number = 50,
   kind?: string,
-  pinned?: boolean
+  pinned?: boolean,
+  collection?: CollectionType,
+  tag?: string
 ): Promise<{ items: Phaste[]; total: number }> {
   const params = new URLSearchParams({
     page: String(page),
@@ -153,9 +155,17 @@ export async function fetchPhastes(
   });
   if (kind && kind !== 'all') params.append('kind', kind);
   if (pinned !== undefined) params.append('pinned', String(pinned));
+  if (collection && collection !== 'all') params.append('collection', collection);
+  if (tag) params.append('tag', tag);
 
   const res = await fetch(`${API_BASE}/phastes?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch phastes');
+  return res.json();
+}
+
+export async function fetchCategories(): Promise<CategoriesResponse> {
+  const res = await fetch(`${API_BASE}/categories`);
+  if (!res.ok) throw new Error('Failed to fetch categories');
   return res.json();
 }
 
@@ -202,7 +212,15 @@ export async function uploadPhasteFile(file: File, title?: string): Promise<Phas
 
 export async function updatePhaste(
   id: string,
-  data: { title?: string; content?: string; is_pinned?: boolean; is_archived?: boolean }
+  data: {
+    title?: string;
+    content?: string;
+    tags?: string[];
+    is_pinned?: boolean;
+    is_archived?: boolean;
+    is_trash?: boolean;
+    is_todo?: boolean;
+  }
 ): Promise<Phaste> {
   const res = await fetch(`${API_BASE}/phastes/${id}`, {
     method: 'PATCH',
@@ -210,6 +228,14 @@ export async function updatePhaste(
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('Failed to update phaste');
+  return res.json();
+}
+
+export async function aiEnrichPhaste(id: string): Promise<Phaste> {
+  const res = await fetch(`${API_BASE}/phastes/${id}/ai-enrich`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to enrich phaste with AI');
   return res.json();
 }
 

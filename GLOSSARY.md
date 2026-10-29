@@ -48,3 +48,19 @@ _Avoid_: Global paste, drop listener, auto-paste
 A non-sequential, cryptographically random identifier enabling direct unauthenticated viewing of an individual Phaste.
 _Avoid_: Share link, public ID, short URL
 
+**Category**:
+A structured classification topic (e.g. `personal/health`, `code`, `recipe`) extracted via text hashtags or clustered by LiteLLM.
+_Avoid_: Folder, directory, label
+
+**Tag**:
+An inline hashtag keyword (e.g. `#bear`, `#swift`) extracted directly from Phaste content or predicted by LiteLLM.
+_Avoid_: Keyword, label
+
+**System Collection**:
+A predefined dynamic smart view filtering Phastes by lifecycle or content state (`All Phastes`, `Today`, `Pinned`, `Media`, `Untagged`, `Archive`, `Trash`).
+_Avoid_: System folder, smart folder, filter tab
+
+**Note Canvas**:
+The primary interactive authoring and reading workspace (Pane 3) for inspecting, editing, and formatting Phaste content.
+_Avoid_: Detail modal, view pane, preview window
+

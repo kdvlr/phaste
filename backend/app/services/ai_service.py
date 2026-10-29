@@ -10,9 +10,9 @@ SYSTEM_PROMPT = """You are an intelligent knowledge extraction assistant for a m
 Given the content, transcript, or metadata of a paste, provide structured enrichment.
 Return ONLY valid JSON matching this schema:
 {
-  "suggested_title": "Concise, descriptive title (<= 60 characters). Avoid generic titles like 'Paste' or 'Text'.",
+  "suggested_title": "Descriptive title (<= 60 characters) ALWAYS prefixed with a single relevant emoji (e.g. '🐼 Polar Bears', '🪴 My green friends', '💻 Swift Basics', '🍕 Homemade Pizza'). Avoid generic titles like 'Paste' or 'Text'.",
   "summary": "1 to 2 sentences summarizing the core content, purpose, or essence.",
-  "tags": ["3 to 5 lowercase keyword tags for indexing and search"]
+  "tags": ["3 to 5 lowercase keyword category tags for the sidebar (e.g. ['bear', 'nature', 'arctic'] or ['code', 'swift', 'programming'] or ['recipe', 'pizza', 'cooking'])"]
 }
 Do not include any markdown fences or explanatory text outside the JSON object."""
 

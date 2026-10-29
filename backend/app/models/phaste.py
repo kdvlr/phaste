@@ -56,8 +56,13 @@ class Phaste(Base):
     # Comprehensive multi-layer context (geo, client, EXIF, OpenGraph)
     metadata_context = Column(JSONB, nullable=False, default=dict)
 
+    # Categories & Tags (auto-extracted from hashtags or inferred via LiteLLM)
+    tags = Column(JSONB, nullable=False, default=list)
+
     is_pinned = Column(Boolean, nullable=False, default=False)
     is_archived = Column(Boolean, nullable=False, default=False)
+    is_trash = Column(Boolean, nullable=False, default=False)
+    is_todo = Column(Boolean, nullable=False, default=False)
 
     created_at = Column(
         DateTime(timezone=True),
@@ -75,7 +80,9 @@ class Phaste(Base):
     __table_args__ = (
         Index("idx_phastes_search_vector", "search_vector", postgresql_using="gin"),
         Index("idx_phastes_metadata_context", "metadata_context", postgresql_using="gin"),
+        Index("idx_phastes_tags", "tags", postgresql_using="gin"),
         Index("idx_phastes_feed", "is_pinned", "created_at"),
+        Index("idx_phastes_trash", "is_trash"),
         Index(
             "idx_phastes_visual_embedding",
             "visual_embedding",

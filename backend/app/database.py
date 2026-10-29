@@ -42,3 +42,8 @@ async def init_db():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         # Create all tables defined in models
         await conn.run_sync(Base.metadata.create_all)
+        # Apply non-destructive migrations for new columns
+        await conn.execute(text("ALTER TABLE phastes ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_phastes_tags ON phastes USING gin (tags);"))
+        await conn.execute(text("ALTER TABLE phastes ADD COLUMN IF NOT EXISTS is_trash BOOLEAN DEFAULT FALSE;"))
+        await conn.execute(text("ALTER TABLE phastes ADD COLUMN IF NOT EXISTS is_todo BOOLEAN DEFAULT FALSE;"))

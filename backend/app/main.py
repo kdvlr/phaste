@@ -7,7 +7,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from app.config import settings
 from app.database import init_db
-from app.routers import phastes, search, media, events, public
+from app.routers import phastes, categories, search, media, events, public
+from app.routers.phastes import backfill_existing_phastes
+import asyncio
 
 
 @asynccontextmanager
@@ -15,6 +17,8 @@ async def lifespan(app: FastAPI):
     # Initialize database tables and vector extension
     try:
         await init_db()
+        # Non-blocking backfill for existing untagged phastes
+        asyncio.create_task(backfill_existing_phastes())
     except Exception as e:
         print(f"[Warning] DB initialization skipped or deferred: {e}")
     yield
@@ -38,6 +42,7 @@ app.add_middleware(
 
 # API Routers
 app.include_router(phastes.router)
+app.include_router(categories.router)
 app.include_router(search.router)
 app.include_router(media.router)
 app.include_router(events.router)

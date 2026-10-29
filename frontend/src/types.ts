@@ -1,5 +1,27 @@
 export type PhasteKind = 'text' | 'richtext' | 'link' | 'image' | 'video';
 export type PhasteStatus = 'ready' | 'processing' | 'fallback_stream' | 'failed';
+export type CollectionType = 'all' | 'today' | 'pinned' | 'media' | 'todo' | 'untagged' | 'archive' | 'trash';
+
+export interface CategoryItem {
+  name: string;
+  count: number;
+}
+
+export interface SystemCollections {
+  all: number;
+  today: number;
+  pinned: number;
+  media: number;
+  todo: number;
+  untagged: number;
+  archive: number;
+  trash: number;
+}
+
+export interface CategoriesResponse {
+  collections: SystemCollections;
+  categories: CategoryItem[];
+}
 
 export interface MetadataContext {
   author?: {
@@ -98,8 +120,11 @@ export interface Phaste {
   duration_seconds?: number | null;
   ocr_transcript?: string | null;
   metadata_context: MetadataContext;
+  tags?: string[];
   is_pinned: boolean;
   is_archived: boolean;
+  is_trash?: boolean;
+  is_todo?: boolean;
   created_at: string;
   updated_at: string;
 }

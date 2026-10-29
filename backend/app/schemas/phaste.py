@@ -27,14 +27,18 @@ class PhasteCreate(BaseModel):
     content: Optional[str] = None
     kind: Optional[str] = None  # auto-detected if omitted
     title: Optional[str] = None
+    tags: Optional[List[str]] = None
     client_context: Optional[ClientContext] = None
 
 
 class PhasteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
+    tags: Optional[List[str]] = None
     is_pinned: Optional[bool] = None
     is_archived: Optional[bool] = None
+    is_trash: Optional[bool] = None
+    is_todo: Optional[bool] = None
 
 
 class PhasteResponse(BaseModel):
@@ -57,8 +61,11 @@ class PhasteResponse(BaseModel):
     duration_seconds: Optional[float] = None
     ocr_transcript: Optional[str] = None
     metadata_context: Dict[str, Any] = Field(default_factory=dict)
+    tags: List[str] = Field(default_factory=list)
     is_pinned: bool
     is_archived: bool
+    is_trash: bool = False
+    is_todo: bool = False
     created_at: datetime
     updated_at: datetime
 
