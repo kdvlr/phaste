@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { aiEnrichPhaste } from '../api';
+import { AgentThinking } from './base/AgentThinking';
 
 interface MetadataInspectorProps {
   phaste: Phaste;
@@ -124,13 +125,16 @@ export const MetadataInspector: React.FC<MetadataInspectorProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-[#ffbd2e]" />
               <span>LiteLLM Insights</span>
             </div>
-            <button
-              onClick={handleEnrichWithAI}
-              disabled={isEnriching}
-              className="text-[11px] px-2 py-0.5 rounded bg-[#8d6e63]/15 text-[#8d6e63] dark:text-[#d7ccc8] hover:bg-[#8d6e63]/25 disabled:opacity-50"
-            >
-              {isEnriching ? 'Analyzing...' : 'Re-analyze'}
-            </button>
+            {isEnriching ? (
+              <AgentThinking variant="stars" label="Analyzing..." />
+            ) : (
+              <button
+                onClick={handleEnrichWithAI}
+                className="text-[11px] px-2 py-0.5 rounded bg-[#8d6e63]/15 text-[#8d6e63] dark:text-[#d7ccc8] hover:bg-[#8d6e63]/25 transition-colors"
+              >
+                Re-analyze
+              </button>
+            )}
           </div>
 
           {ai.summary ? (

@@ -20,8 +20,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Phaste } from '../types';
-import { getMediaUrl, updatePhaste, uploadPhasteFile } from '../api';
+import { getMediaUrl, updatePhaste, uploadPhasteFile, aiEnrichPhaste } from '../api';
 import { MarkdownRenderer } from '../utils/markdownRenderer';
+import { AgentThinking } from './base/AgentThinking';
+import { ScrollFade, useScrollFade } from './base/ScrollFade';
+import { Kbd } from './base/Kbd';
 
 interface NoteCanvasProps {
   phaste: Phaste | null;
@@ -50,7 +53,9 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
   const [content, setContent] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [isHeadingMenuOpen, setIsHeadingMenuOpen] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
 
+  const canvasFade = useScrollFade();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<any>(null);
@@ -71,15 +76,34 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
     }
   }, [phaste?.id]);
 
+  const handleAiEnrich = async () => {
+    if (!phaste || isEnriching) return;
+    setIsEnriching(true);
+    try {
+      const updated = await aiEnrichPhaste(phaste.id);
+      onUpdate(updated);
+      setTitle(updated.title || '');
+      onShowToast('Enriched with LiteLLM categories & summary!', 'success');
+    } catch (err: any) {
+      onShowToast(err.message || 'AI enrichment failed', 'error');
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
   if (!phaste) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center h-full bg-white dark:bg-[#1b1614] text-[#a1887f] p-8 text-center select-none">
         <div className="w-16 h-16 rounded-2xl bg-[#f5f5f7] dark:bg-[#241e1b] flex items-center justify-center text-3xl mb-4 shadow-sm">
-          &#128221;
+          📝
         </div>
         <h3 className="text-base font-semibold text-[#3e2723] dark:text-[#efebe9]">No Phaste Selected</h3>
-        <p className="text-xs text-[#a1887f] max-w-sm mt-1">
-          Select a phaste from the list, paste anywhere with <kbd className="px-1.5 py-0.5 rounded bg-[#e5e2da] dark:bg-[#3a2e2a] font-mono text-[10px]">Cmd+V</kbd>, or drop files to create one.
+        <p className="text-xs text-[#a1887f] max-w-sm mt-1.5 flex items-center justify-center flex-wrap gap-1">
+          <span>Select a phaste, paste anywhere with</span>
+          <Kbd>⌘V</Kbd>
+          <span>or press</span>
+          <Kbd>⌘N</Kbd>
+          <span>to create.</span>
         </p>
       </div>
     );
@@ -205,8 +229,10 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
             </button>
           )}
 
-          {/* Active Tag Pills */}
-          {phaste.tags && phaste.tags.length > 0 && (
+          {/* AI Thinking Indicator or Active Tag Pills */}
+          {isEnriching ? (
+            <AgentThinking variant="stars" label="Enriching with LiteLLM..." />
+          ) : phaste.tags && phaste.tags.length > 0 ? (
             <div className="hidden sm:flex items-center space-x-1">
               {phaste.tags.slice(0, 3).map((tag, idx) => (
                 <span
@@ -218,10 +244,10 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
                 </span>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Right Action Icons: B I U toggle, Pin, Share, Inspector i, More ⋮ */}
+        {/* Right Action Icons: B I U toggle, Sparkles, Pin, Share, Inspector i, Trash */}
         <div className="flex items-center space-x-1 sm:space-x-2">
           {/* View / Edit Mode Toggle (B I U icon) */}
           <button
@@ -234,6 +260,20 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
             title={isEditMode ? 'Switch to Live Render View' : 'Edit Markdown Text'}
           >
             <span className="tracking-widest">B I U</span>
+          </button>
+
+          {/* AI Enrich with LiteLLM */}
+          <button
+            onClick={handleAiEnrich}
+            disabled={isEnriching}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isEnriching
+                ? 'text-amber-500 bg-amber-500/10'
+                : 'text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-black/5 dark:hover:bg-white/5'
+            }`}
+            title="Auto-enrich Title, Tags & Summary with LiteLLM"
+          >
+            <Sparkles className="w-4 h-4 text-amber-500" />
           </button>
 
           {/* Pin */}
@@ -282,10 +322,14 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
         </div>
       </div>
 
-      {/* Main Note Canvas Body */}
-      <div className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 max-w-4xl mx-auto w-full pb-32">
-        {/* Large Note Title (Editable with Leading Emoji) */}
-        <div className="mb-6">
+      {/* Main Note Canvas Body with BoardUI ScrollFade */}
+      <div className="relative flex-1 min-h-0 flex flex-col">
+        <div
+          onScroll={canvasFade.onScroll}
+          className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 max-w-4xl mx-auto w-full pb-32"
+        >
+          {/* Large Note Title (Editable with Leading Emoji) */}
+          <div className="mb-6">
           <input
             type="text"
             value={title}
@@ -377,6 +421,13 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
             )}
           </div>
         )}
+        </div>
+
+        {/* BoardUI ScrollFade on Canvas */}
+        <ScrollFade
+          progress={canvasFade.progress}
+          surfaceClassName="from-white dark:from-[#1b1614]"
+        />
       </div>
 
       {/* Floating Bottom Toolbar (Centered Pill) */}
