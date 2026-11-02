@@ -10,10 +10,11 @@ import {
   Shield,
   FileCode,
   Tag,
+  Folder,
   Check,
 } from 'lucide-react';
 import { Phaste } from '../types';
-import { aiEnrichPhaste } from '../api';
+import { aiEnrichPhaste, updatePhaste } from '../api';
 import { AgentThinking } from './base/AgentThinking';
 
 interface MetadataInspectorProps {
@@ -32,6 +33,23 @@ export const MetadataInspector: React.FC<MetadataInspectorProps> = ({
   const [isEnriching, setIsEnriching] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
   const [hasCopiedUrl, setHasCopiedUrl] = useState(false);
+  const [categoryInput, setCategoryInput] = useState(phaste.category || '');
+
+  React.useEffect(() => {
+    setCategoryInput(phaste.category || '');
+  }, [phaste.category]);
+
+  const handleSaveCategory = async () => {
+    const trimmed = categoryInput.trim();
+    if (trimmed === (phaste.category || '')) return;
+    try {
+      const res = await updatePhaste(phaste.id, { category: trimmed || null });
+      onPhasteUpdated(res);
+      onShowToast(trimmed ? `Category updated to "${trimmed}"` : 'Category removed', 'success');
+    } catch {
+      onShowToast('Failed to update category', 'error');
+    }
+  };
 
   const shareUrl = `${window.location.origin}/sh/${phaste.public_slug}`;
   const meta = phaste.metadata_context || {};
@@ -147,25 +165,25 @@ export const MetadataInspector: React.FC<MetadataInspectorProps> = ({
             </p>
           )}
 
-          {/* Tags */}
-          <div className="pt-1">
-            <div className="text-[10px] uppercase font-semibold text-[#a1887f] mb-1">
-              Detected Categories / Tags
+          {/* Single Canonical Category */}
+          <div className="pt-1 space-y-1.5">
+            <div className="text-[10px] uppercase font-semibold text-[#a1887f] flex items-center justify-between">
+              <span>Category</span>
+              <span className="text-[9px] text-[#a1887f]/70 font-normal">Strictly 1 category</span>
             </div>
-            <div className="flex flex-wrap gap-1">
-              {phaste.tags && phaste.tags.length > 0 ? (
-                phaste.tags.map((t, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-[#8d6e63]/15 text-[#6d4c41] dark:text-[#efebe9] font-mono text-[10px]"
-                  >
-                    <Tag className="w-2.5 h-2.5" />
-                    <span>#{t}</span>
-                  </span>
-                ))
-              ) : (
-                <span className="text-[11px] text-[#a1887f] italic">No tags</span>
-              )}
+            <div className="relative flex items-center">
+              <Folder className="w-3.5 h-3.5 absolute left-2.5 text-[#8d6e63] dark:text-[#a1887f] pointer-events-none" />
+              <input
+                type="text"
+                value={categoryInput}
+                onChange={(e) => setCategoryInput(e.target.value)}
+                onBlur={handleSaveCategory}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveCategory();
+                }}
+                placeholder="Assign category (e.g. Code, Personal)..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[#f5f5f7] dark:bg-[#1b1614] border border-[#e5e2da]/70 dark:border-[#4e342e]/50 text-[#3e2723] dark:text-[#efebe9] focus:outline-none focus:ring-1 focus:ring-[#8d6e63]"
+              />
             </div>
           </div>
         </div>

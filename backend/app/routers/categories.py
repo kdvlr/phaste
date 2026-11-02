@@ -52,15 +52,16 @@ async def get_categories_and_collections(db: AsyncSession = Depends(get_db)):
     )
     todo_count = todo_res.scalar() or 0
 
-    untagged_res = await db.execute(
+    uncategorized_res = await db.execute(
         select(func.count(Phaste.id)).where(
             and_(
                 Phaste.is_trash == False,
-                or_(Phaste.tags == None, func.jsonb_array_length(Phaste.tags) == 0)
+                Phaste.is_archived == False,
+                or_(Phaste.category == None, Phaste.category == "")
             )
         )
     )
-    untagged_count = untagged_res.scalar() or 0
+    uncategorized_count = uncategorized_res.scalar() or 0
 
     archive_res = await db.execute(
         select(func.count(Phaste.id)).where(
@@ -74,20 +75,27 @@ async def get_categories_and_collections(db: AsyncSession = Depends(get_db)):
     )
     trash_count = trash_res.scalar() or 0
 
-    # 2. Dynamic Categories / Tags with counts
+    # 2. Dynamic Categories with counts (each phaste belongs to strictly one category)
     categories = []
     try:
-        tag_stmt = (
+        cat_stmt = (
             select(
-                func.jsonb_array_elements_text(Phaste.tags).label("tag"),
+                Phaste.category,
                 func.count(Phaste.id).label("count")
             )
-            .where(Phaste.is_trash == False)
-            .group_by("tag")
-            .order_by(desc("count"), asc("tag"))
+            .where(
+                and_(
+                    Phaste.is_trash == False,
+                    Phaste.is_archived == False,
+                    Phaste.category != None,
+                    Phaste.category != ""
+                )
+            )
+            .group_by(Phaste.category)
+            .order_by(desc("count"), asc(Phaste.category))
         )
-        tag_res = await db.execute(tag_stmt)
-        categories = [{"name": str(row[0]), "count": int(row[1])} for row in tag_res.fetchall() if row[0]]
+        cat_res = await db.execute(cat_stmt)
+        categories = [{"name": str(row[0]), "count": int(row[1])} for row in cat_res.fetchall() if row[0]]
     except Exception:
         # Fallback if table column just created
         pass
@@ -99,7 +107,8 @@ async def get_categories_and_collections(db: AsyncSession = Depends(get_db)):
             "pinned": pinned_count,
             "media": media_count,
             "todo": todo_count,
-            "untagged": untagged_count,
+            "uncategorized": uncategorized_count,
+            "untagged": uncategorized_count,
             "archive": archive_count,
             "trash": trash_count
         },

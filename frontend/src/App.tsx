@@ -39,7 +39,7 @@ import {
 export const App: React.FC = () => {
   // Navigation & Filtering State
   const [selectedCollection, setSelectedCollection] = useState<CollectionType>('all');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [collections, setCollections] = useState<SystemCollections>({
     all: 0,
@@ -47,7 +47,7 @@ export const App: React.FC = () => {
     pinned: 0,
     media: 0,
     todo: 0,
-    untagged: 0,
+    uncategorized: 0,
     archive: 0,
     trash: 0,
   });
@@ -140,8 +140,8 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // 3. Fetch Phastes for active collection / tag
-  // Note: Only depends on [selectedCollection, selectedTag].
+  // 3. Fetch Phastes for active collection / category
+  // Note: Only depends on [selectedCollection, selectedCategory].
   // Never re-fetches when user changes active note selection!
   const loadPhastes = useCallback(async () => {
     setIsLoading(true);
@@ -152,7 +152,7 @@ export const App: React.FC = () => {
         undefined,
         undefined,
         selectedCollection,
-        selectedTag || undefined
+        selectedCategory || undefined
       );
       setPhastes(data.items);
       // If no phaste is selected, pick the first one
@@ -167,7 +167,7 @@ export const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCollection, selectedTag, showToast]);
+  }, [selectedCollection, selectedCategory, showToast]);
 
   useEffect(() => {
     loadCategories();
@@ -178,7 +178,7 @@ export const App: React.FC = () => {
       setSearchResults(null);
       loadPhastes();
     }
-  }, [selectedCollection, selectedTag, searchQuery, loadPhastes]);
+  }, [selectedCollection, selectedCategory, searchQuery, loadPhastes]);
 
   // 4. Debounced Search
   useEffect(() => {
@@ -266,8 +266,7 @@ export const App: React.FC = () => {
   // 7. Instant Create Phaste Handler (0ms optimistic response)
   const handleNewPhaste = async () => {
     const tempId = `temp-${Date.now()}`;
-    const defaultTag = selectedTag ? `#${selectedTag} ` : '';
-    const initialText = `${defaultTag}\n\n`;
+    const initialText = '';
 
     const optimistic: Phaste = {
       id: tempId,
@@ -276,7 +275,8 @@ export const App: React.FC = () => {
       status: 'ready',
       title: '📝 Untitled Phaste',
       content: initialText,
-      tags: selectedTag ? [selectedTag] : [],
+      category: selectedCategory || null,
+      tags: selectedCategory ? [selectedCategory.toLowerCase()] : [],
       is_pinned: false,
       is_archived: false,
       is_trash: false,
@@ -294,7 +294,7 @@ export const App: React.FC = () => {
     setMobileScreen('detail');
 
     try {
-      const realItem = await createPhasteText(initialText, 'text', '📝 Untitled Phaste');
+      const realItem = await createPhasteText(initialText, 'text', '📝 Untitled Phaste', selectedCategory || undefined);
       setPhastes((prev) => prev.map((p) => (p.id === tempId ? realItem : p)));
       setSelectedPhasteId(realItem.id);
       loadCategories();
@@ -456,12 +456,13 @@ export const App: React.FC = () => {
 
   // Header Title in middle column
   const activeTitle = useMemo(() => {
-    if (selectedTag) return `#${selectedTag}`;
+    if (selectedCategory) return selectedCategory;
     switch (selectedCollection) {
       case 'all':
         return 'Phastes';
+      case 'uncategorized':
       case 'untagged':
-        return 'Untagged';
+        return 'Uncategorized';
       case 'todo':
         return 'Todo';
       case 'today':
@@ -477,7 +478,7 @@ export const App: React.FC = () => {
       default:
         return 'Phastes';
     }
-  }, [selectedCollection, selectedTag]);
+  }, [selectedCollection, selectedCategory]);
 
   const displayedPhastes = searchResults !== null ? searchResults : phastes;
 
@@ -503,11 +504,11 @@ export const App: React.FC = () => {
         selectedCollection={selectedCollection}
         onSelectCollection={(col) => {
           setSelectedCollection(col);
-          setSelectedTag(null);
+          setSelectedCategory(null);
         }}
-        selectedTag={selectedTag}
-        onSelectTag={(tag) => {
-          setSelectedTag(tag);
+        selectedCategory={selectedCategory}
+        onSelectCategory={(category) => {
+          setSelectedCategory(category);
         }}
         categories={categories}
         collections={collections}
@@ -557,8 +558,9 @@ export const App: React.FC = () => {
           isInspectorOpen={isInspectorOpen}
           onBackMobile={() => setMobileScreen('list')}
           onShowToast={showToast}
-          onTagClick={(tag) => {
-            setSelectedTag(tag);
+          onCategoryClick={(category) => {
+            setSelectedCategory(category);
+            setSelectedCollection('all');
             if (window.innerWidth < 768) setMobileScreen('list');
           }}
         />

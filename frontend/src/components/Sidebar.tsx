@@ -26,6 +26,7 @@ import {
   GraduationCap,
   Plane,
   X,
+  Folder,
 } from 'lucide-react';
 import { CollectionType, CategoryItem, SystemCollections } from '../types';
 import { ThemeMode } from '../utils/theme';
@@ -33,8 +34,8 @@ import { ThemeMode } from '../utils/theme';
 interface SidebarProps {
   selectedCollection: CollectionType;
   onSelectCollection: (col: CollectionType) => void;
-  selectedTag: string | null;
-  onSelectTag: (tag: string | null) => void;
+  selectedCategory: string | null;
+  onSelectCategory: (category: string | null) => void;
   categories: CategoryItem[];
   collections: SystemCollections;
   theme: ThemeMode;
@@ -46,7 +47,7 @@ interface SidebarProps {
   onEmptyTrash?: () => void;
 }
 
-// Maps category names to contextual Lucide icons matching screenshot
+// Maps category names to contextual Lucide icons
 function getCategoryIcon(name: string) {
   const lower = name.toLowerCase();
   if (/bear|pet|dog|cat|animal|zoo|polar/.test(lower)) return Heart;
@@ -59,14 +60,14 @@ function getCategoryIcon(name: string) {
   if (/science|bio|lab|chem|physics/.test(lower)) return FlaskConical;
   if (/study|learn|school|book|course/.test(lower)) return GraduationCap;
   if (/travel|flight|trip|hotel|paris|tokyo/.test(lower)) return Plane;
-  return Hash;
+  return Folder;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   selectedCollection,
   onSelectCollection,
-  selectedTag,
-  onSelectTag,
+  selectedCategory,
+  onSelectCategory,
   categories,
   collections,
   theme,
@@ -80,13 +81,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isPhastesExpanded, setIsPhastesExpanded] = useState(true);
 
   const handleSelectCollection = (col: CollectionType) => {
-    onSelectTag(null);
+    onSelectCategory(null);
     onSelectCollection(col);
     if (onCloseMobile) onCloseMobile();
   };
 
-  const handleSelectTag = (tag: string) => {
-    onSelectTag(tag);
+  const handleSelectCategory = (cat: string) => {
+    onSelectCategory(cat);
     if (onCloseMobile) onCloseMobile();
   };
 
@@ -156,7 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => handleSelectCollection('all')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'all' && selectedTag === null
+                    selectedCollection === 'all' && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
@@ -170,21 +171,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </span>
                 </button>
 
-                {/* Untagged */}
+                {/* Uncategorized */}
                 <button
-                  onClick={() => handleSelectCollection('untagged')}
+                  onClick={() => handleSelectCollection('uncategorized')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'untagged' && selectedTag === null
+                    (selectedCollection === 'uncategorized' || selectedCollection === 'untagged') && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
                 >
                   <div className="flex items-center space-x-2.5">
                     <FileQuestion className="w-4 h-4 text-[#a1887f]" />
-                    <span>Untagged</span>
+                    <span>Uncategorized</span>
                   </div>
                   <span className="text-xs px-1.5 py-0.2 text-[#a1887f]">
-                    {collections.untagged}
+                    {collections.uncategorized ?? collections.untagged ?? 0}
                   </span>
                 </button>
 
@@ -192,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => handleSelectCollection('todo')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'todo' && selectedTag === null
+                    selectedCollection === 'todo' && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
@@ -210,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => handleSelectCollection('today')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'today' && selectedTag === null
+                    selectedCollection === 'today' && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
@@ -228,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => handleSelectCollection('pinned')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'pinned' && selectedTag === null
+                    selectedCollection === 'pinned' && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
@@ -246,7 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => handleSelectCollection('media')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'media' && selectedTag === null
+                    selectedCollection === 'media' && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
@@ -264,7 +265,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => handleSelectCollection('archive')}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'archive' && selectedTag === null
+                    selectedCollection === 'archive' && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
@@ -281,7 +282,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Trash */}
                 <div
                   className={`group w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    selectedCollection === 'trash' && selectedTag === null
+                    selectedCollection === 'trash' && selectedCategory === null
                       ? 'bg-[#3a2e2a] text-white font-medium'
                       : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                   }`}
@@ -318,23 +319,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Dynamic Categories Section */}
           <div className="pt-2 border-t border-[#3a2e2a]/40">
             <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[#a1887f]">
-              Tags
+              Categories
             </div>
 
             <div className="mt-1 space-y-0.5">
               {categories.length === 0 ? (
                 <div className="px-3 py-2 text-xs text-[#a1887f]/70 italic">
-                  No tags yet. Use #hashtags in phastes to auto-categorize.
+                  No categories yet. Automatically detected by LiteLLM.
                 </div>
               ) : (
                 categories.map((cat) => {
                   const IconComponent = getCategoryIcon(cat.name);
-                  const isSelected = selectedTag === cat.name;
+                  const isSelected = selectedCategory === cat.name;
 
                   return (
                     <button
                       key={cat.name}
-                      onClick={() => handleSelectTag(cat.name)}
+                      onClick={() => handleSelectCategory(cat.name)}
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors group ${
                         isSelected
                           ? 'bg-[#3a2e2a] text-white font-medium'
@@ -345,7 +346,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#ffbd2e]' : 'text-[#a1887f] group-hover:text-[#d7ccc8]'}`} />
                         <span className="truncate">{cat.name}</span>
                       </div>
-                      <span className="text-xs px-1.5 py-0.2 text-[#a1887f] shrink-0">
+                      <span className="text-xs px-1.5 py-0.2 text-[#a1887f] shrink-0 font-mono">
                         {cat.count}
                       </span>
                     </button>

@@ -27,6 +27,7 @@ class PhasteCreate(BaseModel):
     content: Optional[str] = None
     kind: Optional[str] = None  # auto-detected if omitted
     title: Optional[str] = None
+    category: Optional[str] = None
     tags: Optional[List[str]] = None
     client_context: Optional[ClientContext] = None
 
@@ -34,6 +35,7 @@ class PhasteCreate(BaseModel):
 class PhasteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
+    category: Optional[str] = None
     tags: Optional[List[str]] = None
     is_pinned: Optional[bool] = None
     is_archived: Optional[bool] = None
@@ -53,6 +55,7 @@ class PhasteResponse(BaseModel):
     content: Optional[str] = None
     rendered_content: Optional[str] = None
     source_url: Optional[str] = None
+    category: Optional[str] = None
     media_path: Optional[str] = None
     thumbnail_path: Optional[str] = None
     media_mime_type: Optional[str] = None

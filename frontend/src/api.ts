@@ -147,7 +147,7 @@ export async function fetchPhastes(
   kind?: string,
   pinned?: boolean,
   collection?: CollectionType,
-  tag?: string
+  category?: string
 ): Promise<{ items: Phaste[]; total: number }> {
   const params = new URLSearchParams({
     page: String(page),
@@ -156,7 +156,7 @@ export async function fetchPhastes(
   if (kind && kind !== 'all') params.append('kind', kind);
   if (pinned !== undefined) params.append('pinned', String(pinned));
   if (collection && collection !== 'all') params.append('collection', collection);
-  if (tag) params.append('tag', tag);
+  if (category) params.append('category', category);
 
   const res = await fetch(`${API_BASE}/phastes?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch phastes');
@@ -179,7 +179,8 @@ export async function searchPhastes(query: string, limit: number = 50): Promise<
 export async function createPhasteText(
   content: string,
   kind?: string,
-  title?: string
+  title?: string,
+  category?: string
 ): Promise<Phaste> {
   const clientContext = getClientContext();
   const res = await fetch(`${API_BASE}/phastes`, {
@@ -189,6 +190,7 @@ export async function createPhasteText(
       content,
       kind,
       title,
+      category,
       client_context: clientContext,
     }),
   });
@@ -215,6 +217,7 @@ export async function updatePhaste(
   data: {
     title?: string;
     content?: string;
+    category?: string | null;
     tags?: string[];
     is_pinned?: boolean;
     is_archived?: boolean;

@@ -1,6 +1,6 @@
 export type PhasteKind = 'text' | 'richtext' | 'link' | 'image' | 'video';
 export type PhasteStatus = 'ready' | 'processing' | 'fallback_stream' | 'failed';
-export type CollectionType = 'all' | 'today' | 'pinned' | 'media' | 'todo' | 'untagged' | 'archive' | 'trash';
+export type CollectionType = 'all' | 'today' | 'pinned' | 'media' | 'todo' | 'uncategorized' | 'untagged' | 'archive' | 'trash';
 
 export interface CategoryItem {
   name: string;
@@ -13,7 +13,8 @@ export interface SystemCollections {
   pinned: number;
   media: number;
   todo: number;
-  untagged: number;
+  uncategorized: number;
+  untagged?: number;
   archive: number;
   trash: number;
 }
@@ -119,6 +120,7 @@ export interface Phaste {
   media_dimensions?: { width: number; height: number } | null;
   duration_seconds?: number | null;
   ocr_transcript?: string | null;
+  category?: string | null;
   metadata_context: MetadataContext;
   tags?: string[];
   is_pinned: boolean;

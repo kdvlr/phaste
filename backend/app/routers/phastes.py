@@ -63,33 +63,35 @@ async def backfill_existing_phastes():
             stmt = select(Phaste).where(
                 and_(
                     Phaste.is_trash == False,
-                    or_(Phaste.tags == None, func.jsonb_array_length(Phaste.tags) == 0)
+                    or_(Phaste.category == None, Phaste.category == "")
                 )
             ).order_by(Phaste.created_at.desc()).limit(100)
             res = await session.execute(stmt)
             phastes_to_backfill = res.scalars().all()
 
             if not phastes_to_backfill:
-                logger.info("[Backfill] No untagged phastes to backfill.")
+                logger.info("[Backfill] No uncategorized phastes to backfill.")
                 return
 
-            logger.info(f"[Backfill] Found {len(phastes_to_backfill)} phastes to enrich.")
+            logger.info(f"[Backfill] Found {len(phastes_to_backfill)} phastes to categorize.")
             for p in phastes_to_backfill:
                 try:
-                    # 1. Check for inline hashtags
+                    # 1. Check for legacy tags or inline hashtags
                     extracted = extract_hashtags((p.content or "") + " " + (p.title or ""))
+                    legacy_tags = list(p.tags or [])
+                    first_tag = extracted[0] if extracted else (legacy_tags[0] if legacy_tags else None)
 
                     # 2. Check for todo markdown checkbox
                     is_todo = bool(re.search(r"-\s*\[([ xX])\]", p.content or ""))
                     if is_todo and not p.is_todo:
                         p.is_todo = True
 
-                    if extracted:
-                        p.tags = extracted
+                    if first_tag:
+                        p.category = first_tag.title()
                         await session.commit()
-                        logger.info(f"[Backfill] Extracted hashtags for {p.id}: {extracted}")
+                        logger.info(f"[Backfill] Assigned category for {p.id}: {p.category}")
                     elif p.content or p.title or p.ocr_transcript:
-                        # 3. Use AI enrichment if no explicit hashtags
+                        # 3. Use AI enrichment for category & title
                         meta = dict(p.metadata_context or {})
                         ai_data = await ai_service.enrich_paste(
                             title=p.title,
@@ -99,11 +101,11 @@ async def backfill_existing_phastes():
                             og_metadata=meta.get("og") if isinstance(meta.get("og"), dict) else None,
                         )
                         if ai_data:
-                            tags = [t.lower().lstrip("#").strip() for t in ai_data.get("tags", []) if t]
-                            p.tags = tags
+                            cat = ai_data.get("category") or "Notes"
+                            p.category = cat
                             meta["ai"] = {
                                 "summary": ai_data.get("summary"),
-                                "tags": tags,
+                                "category": cat,
                                 "model": ai_data.get("model"),
                             }
                             if ai_data.get("suggested_title") and (
@@ -114,7 +116,7 @@ async def backfill_existing_phastes():
                                 p.title = ai_data["suggested_title"]
                             p.metadata_context = meta
                             await session.commit()
-                            logger.info(f"[Backfill] AI enriched {p.id} with title='{p.title}', tags={tags}")
+                            logger.info(f"[Backfill] AI categorized {p.id} as '{cat}', title='{p.title}'")
                     await asyncio.sleep(0.5)
                 except Exception as item_err:
                     logger.warning(f"[Backfill] Failed enriching item {p.id}: {item_err}")
@@ -204,7 +206,7 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
             else:
                 item.status = "ready"
 
-            # 4. LiteLLM Enrichment: Smart Title, Executive Summary, Tags
+            # 4. LiteLLM Enrichment: Smart Title, Executive Summary, Single Category
             try:
                 ai_data = await ai_service.enrich_paste(
                     title=item.title,
@@ -214,10 +216,12 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                     og_metadata=meta.get("og") if isinstance(meta.get("og"), dict) else None,
                 )
                 if ai_data:
-                    ai_tags = [t.lower().lstrip("#").strip() for t in ai_data.get("tags", []) if t]
+                    cat = ai_data.get("category")
+                    if cat and (not item.category or item.category == ""):
+                        item.category = cat
                     meta["ai"] = {
                         "summary": ai_data.get("summary"),
-                        "tags": ai_tags,
+                        "category": cat,
                         "model": ai_data.get("model"),
                     }
                     if ai_data.get("suggested_title") and (
@@ -226,12 +230,6 @@ async def run_background_enrichment(phaste_id: uuid.UUID):
                         or item.title.endswith(".bin")
                     ):
                         item.title = ai_data["suggested_title"]
-
-                    current_tags = list(item.tags or [])
-                    if not current_tags and ai_tags:
-                        item.tags = ai_tags
-                    elif ai_tags:
-                        item.tags = list(dict.fromkeys(current_tags + ai_tags))
             except Exception as ai_err:
                 logger.warning("AI enrichment failed for %s: %s", phaste_id, ai_err)
 
@@ -497,6 +495,7 @@ async def create_phaste(
     content: Optional[str] = None
     kind: Optional[str] = None
     title: Optional[str] = None
+    category: Optional[str] = None
     client_ctx: Optional[ClientContext] = None
     file: Optional[UploadFile] = None
 
@@ -507,6 +506,7 @@ async def create_phaste(
             content = payload.content
             kind = payload.kind
             title = payload.title
+            category = payload.category
             client_ctx = payload.client_context
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
@@ -524,6 +524,9 @@ async def create_phaste(
         raw_title = form.get("title_form") or form.get("title")
         if isinstance(raw_title, str):
             title = raw_title
+        raw_category = form.get("category_form") or form.get("category")
+        if isinstance(raw_category, str):
+            category = raw_category
         raw_client_ctx = form.get("client_context")
         if isinstance(raw_client_ctx, str):
             try:
@@ -683,12 +686,15 @@ async def create_phaste(
     extracted_tags = extract_hashtags(f"{title or ''} {content or ''}")
     is_todo = bool(re.search(r"-\s*\[([ xX])\]", content or ""))
 
+    resolved_category = (category.strip().title() if category else None) or (extracted_tags[0].title() if extracted_tags else None)
+
     phaste = Phaste(
         id=new_id,
         kind=kind or "text",
         status="processing" if (kind in ("video", "image") or source_url) else "ready",
         title=title,
         content=content,
+        category=resolved_category,
         tags=extracted_tags,
         is_todo=is_todo,
         is_trash=False,
@@ -722,6 +728,7 @@ async def list_phastes(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100),
     collection: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     kind: Optional[str] = Query(None),
     pinned: Optional[bool] = Query(None),
@@ -755,13 +762,17 @@ async def list_phastes(
         conditions.append(or_(Phaste.kind.in_(["image", "video"]), Phaste.media_path.isnot(None)))
     elif collection == "todo":
         conditions.append(Phaste.is_todo == True)
-    elif collection == "untagged":
-        conditions.append(or_(Phaste.tags == None, func.jsonb_array_length(Phaste.tags) == 0))
+    elif collection in ("uncategorized", "untagged"):
+        conditions.append(or_(Phaste.category == None, Phaste.category == ""))
 
-    # Tag filter
+    # Category filter (strictly one category per phaste)
+    if category:
+        conditions.append(Phaste.category == category.strip())
+
+    # Legacy Tag filter
     if tag:
         tag_clean = tag.strip().lower().lstrip("#")
-        conditions.append(Phaste.tags.contains([tag_clean]))
+        conditions.append(or_(Phaste.tags.contains([tag_clean]), func.lower(Phaste.category) == tag_clean))
 
     # Explicit query parameters
     if kind:
@@ -813,6 +824,9 @@ async def update_phaste(
 
     if payload.title is not None:
         item.title = payload.title
+    if payload.category is not None:
+        cat_clean = payload.category.strip()
+        item.category = cat_clean.title() if cat_clean else None
     if payload.content is not None:
         item.content = payload.content
         item.is_todo = bool(re.search(r"-\s*\[([ xX])\]", payload.content))

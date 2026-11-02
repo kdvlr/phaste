@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Video as VideoIcon,
   Link as LinkIcon,
+  Folder,
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { getMediaUrl } from '../api';
@@ -249,10 +250,20 @@ export const NotesList: React.FC<NotesListProps> = ({
                     </h4>
                   </div>
 
+                  {/* Single Category Badge */}
+                  {p.category && (
+                    <div className="mb-1.5 flex items-center">
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-[#8d6e63]/10 dark:bg-white/10 text-[#6d4c41] dark:text-[#d7ccc8] text-[10px] font-medium">
+                        <Folder className="w-2.5 h-2.5 opacity-70" />
+                        <span>{p.category}</span>
+                      </span>
+                    </div>
+                  )}
+
                   {/* Snippet */}
                   {snippet && (
                     <p className="text-xs text-[#6d4c41]/80 dark:text-[#d7ccc8]/70 line-clamp-2 leading-relaxed mb-2">
-                      {renderSnippetWithHighlightedTags(snippet)}
+                      {snippet}
                     </p>
                   )}
 
@@ -332,20 +343,3 @@ export const NotesList: React.FC<NotesListProps> = ({
     </div>
   );
 };
-
-function renderSnippetWithHighlightedTags(text: string) {
-  const parts = text.split(/(#[a-zA-Z0-9_\-]+)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('#')) {
-      return (
-        <span
-          key={i}
-          className="inline-block px-1.5 py-0.2 mx-0.5 rounded-full bg-[#8d6e63]/10 dark:bg-white/10 text-[#8d6e63] dark:text-[#d7ccc8] font-mono text-[10px]"
-        >
-          {part}
-        </span>
-      );
-    }
-    return part;
-  });
-}

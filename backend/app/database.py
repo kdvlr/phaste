@@ -47,3 +47,13 @@ async def init_db():
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_phastes_tags ON phastes USING gin (tags);"))
         await conn.execute(text("ALTER TABLE phastes ADD COLUMN IF NOT EXISTS is_trash BOOLEAN DEFAULT FALSE;"))
         await conn.execute(text("ALTER TABLE phastes ADD COLUMN IF NOT EXISTS is_todo BOOLEAN DEFAULT FALSE;"))
+        await conn.execute(text("ALTER TABLE phastes ADD COLUMN IF NOT EXISTS category VARCHAR(128);"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_phastes_category ON phastes (category);"))
+        # Non-destructive backfill: derive category from first tag for legacy rows without category
+        await conn.execute(text("""
+            UPDATE phastes
+            SET category = INITCAP(tags->>0)
+            WHERE (category IS NULL OR category = '')
+              AND tags IS NOT NULL
+              AND jsonb_array_length(tags) > 0;
+        """))

@@ -8,11 +8,12 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are an intelligent knowledge extraction assistant for a multi-format personal vault and pastebin (Phaste).
 Given the content, transcript, or metadata of a paste, provide structured enrichment.
+Important: Every phaste belongs to strictly ONE single category (no multiple tags).
 Return ONLY valid JSON matching this schema:
 {
   "suggested_title": "Descriptive title (<= 60 characters) ALWAYS prefixed with a single relevant emoji (e.g. '🐼 Polar Bears', '🪴 My green friends', '💻 Swift Basics', '🍕 Homemade Pizza'). Avoid generic titles like 'Paste' or 'Text'.",
   "summary": "1 to 2 sentences summarizing the core content, purpose, or essence.",
-  "tags": ["3 to 5 lowercase keyword category tags for the sidebar (e.g. ['bear', 'nature', 'arctic'] or ['code', 'swift', 'programming'] or ['recipe', 'pizza', 'cooking'])"]
+  "category": "A single best-matching category name (1 to 2 words, title-cased, e.g. 'Personal', 'Code', 'Recipe', 'Science', 'Work', 'Finance', 'Travel', 'Health', 'Media'). Strictly ONE category."
 }
 Do not include any markdown fences or explanatory text outside the JSON object."""
 
@@ -96,14 +97,13 @@ class AIService:
                     raw_text = raw_text.strip()
 
                 parsed = json.loads(raw_text)
+                cat_raw = str(parsed.get("category", "")).strip().lstrip("#")
+                cat = cat_raw.title() if cat_raw else None
                 return {
                     "suggested_title": str(parsed.get("suggested_title", "")).strip(),
                     "summary": str(parsed.get("summary", "")).strip(),
-                    "tags": [
-                        str(t).strip().lower()
-                        for t in parsed.get("tags", [])
-                        if str(t).strip()
-                    ],
+                    "category": cat,
+                    "tags": [cat.lower()] if cat else [],
                     "model": self.model,
                 }
         except Exception as e:

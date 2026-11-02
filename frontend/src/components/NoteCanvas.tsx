@@ -18,6 +18,7 @@ import {
   Trash2,
   Archive,
   Sparkles,
+  Folder,
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { getMediaUrl, updatePhaste, uploadPhasteFile, aiEnrichPhaste } from '../api';
@@ -35,7 +36,7 @@ interface NoteCanvasProps {
   isInspectorOpen: boolean;
   onBackMobile?: () => void;
   onShowToast: (msg: string, type?: 'info' | 'success' | 'error') => void;
-  onTagClick?: (tag: string) => void;
+  onCategoryClick?: (category: string) => void;
 }
 
 export const NoteCanvas: React.FC<NoteCanvasProps> = ({
@@ -47,7 +48,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
   isInspectorOpen,
   onBackMobile,
   onShowToast,
-  onTagClick,
+  onCategoryClick,
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -229,22 +230,19 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
             </button>
           )}
 
-          {/* AI Thinking Indicator or Active Tag Pills */}
+          {/* AI Thinking Indicator or Single Category Pill */}
           {isEnriching ? (
             <AgentThinking variant="stars" label="Enriching with LiteLLM..." />
-          ) : phaste.tags && phaste.tags.length > 0 ? (
-            <div className="hidden sm:flex items-center space-x-1">
-              {phaste.tags.slice(0, 3).map((tag, idx) => (
-                <span
-                  key={idx}
-                  onClick={() => onTagClick && onTagClick(tag)}
-                  className="px-2 py-0.5 rounded-full bg-[#8d6e63]/10 text-[#6d4c41] dark:text-[#d7ccc8] text-[11px] font-mono cursor-pointer hover:bg-[#8d6e63]/20"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          ) : (
+            <button
+              onClick={() => onCategoryClick && onCategoryClick(phaste.category || 'Uncategorized')}
+              className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-[#8d6e63]/10 dark:bg-white/10 text-[#6d4c41] dark:text-[#d7ccc8] text-xs font-medium hover:bg-[#8d6e63]/20 transition-colors"
+              title={`Category: ${phaste.category || 'Uncategorized'} (Click to filter)`}
+            >
+              <Folder className="w-3.5 h-3.5 opacity-70" />
+              <span>{phaste.category || 'Uncategorized'}</span>
+            </button>
+          )}
         </div>
 
         {/* Right Action Icons: B I U toggle, Sparkles, Pin, Share, Inspector i, Trash */}
@@ -412,7 +410,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
               <MarkdownRenderer
                 content={content}
                 onToggleCheckbox={handleToggleCheckbox}
-                onTagClick={onTagClick}
+                onTagClick={onCategoryClick}
               />
             ) : (
               <div className="text-sm text-[#a1887f] italic py-8">
