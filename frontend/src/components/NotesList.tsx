@@ -18,6 +18,7 @@ import { getMediaUrl } from '../api';
 import { formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { Kbd } from './base/Kbd';
 import { ScrollFade, useScrollFade } from './base/ScrollFade';
+import { highlightSearchText, getSearchSnippet } from '../utils/searchHighlight';
 
 interface NotesListProps {
   phastes: Phaste[];
@@ -149,7 +150,14 @@ export const NotesList: React.FC<NotesListProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                window.dispatchEvent(
+                  new CustomEvent('phaste:search-navigate', {
+                    detail: { direction: e.shiftKey ? 'prev' : 'next' },
+                  })
+                );
+              } else if (e.key === 'Escape') {
                 if (searchQuery) {
                   onSearchChange('');
                 } else {
@@ -230,10 +238,12 @@ export const NotesList: React.FC<NotesListProps> = ({
               const thumb = getThumbnailSrc(p);
               const timeAgo = formatTimestamp(p.created_at);
 
-              // Snippet preview (strip markdown headings/tags)
-              const snippet = (p.content || p.ocr_transcript || '')
-                .replace(/^#+\s+/gm, '')
-                .slice(0, 120);
+              // Snippet preview (centered around search match if searching)
+              const snippet = getSearchSnippet(
+                p.content || p.ocr_transcript || '',
+                searchQuery,
+                130
+              );
 
               return (
                 <div
@@ -248,7 +258,7 @@ export const NotesList: React.FC<NotesListProps> = ({
                   {/* Title */}
                   <div className="flex items-start justify-between gap-1 mb-1">
                     <h4 className="text-sm font-semibold text-[#3e2723] dark:text-[#efebe9] truncate leading-tight">
-                      {p.title || 'Untitled'}
+                      {highlightSearchText(p.title || 'Untitled', searchQuery)}
                     </h4>
                   </div>
 
@@ -265,7 +275,7 @@ export const NotesList: React.FC<NotesListProps> = ({
                   {/* Snippet */}
                   {snippet && (
                     <p className="text-xs text-[#6d4c41]/80 dark:text-[#d7ccc8]/70 line-clamp-2 leading-relaxed mb-2">
-                      {snippet}
+                      {highlightSearchText(snippet, searchQuery)}
                     </p>
                   )}
 

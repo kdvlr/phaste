@@ -1,18 +1,26 @@
 import React from 'react';
+import { highlightSearchText } from './searchHighlight';
 
 interface MarkdownRendererProps {
   content: string;
   onToggleCheckbox?: (lineIndex: number, newChecked: boolean) => void;
   onTagClick?: (tag: string) => void;
+  searchQuery?: string;
+  currentMatchIndex?: number;
+  globalMatchCounter?: { count: number };
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   onToggleCheckbox,
   onTagClick,
+  searchQuery,
+  currentMatchIndex,
+  globalMatchCounter,
 }) => {
   if (!content) return null;
 
+  const counter = globalMatchCounter || { count: 0 };
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
 
@@ -40,7 +48,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               <tr>
                 {currentHeader.map((th, i) => (
                   <th key={i} className="px-4 py-2.5 font-semibold">
-                    {renderInline(th, onTagClick)}
+                    {renderInline(th, onTagClick, searchQuery, currentMatchIndex, counter)}
                   </th>
                 ))}
               </tr>
@@ -51,7 +59,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               <tr key={rowIdx} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
                 {row.map((cell, cellIdx) => (
                   <td key={cellIdx} className="px-4 py-2.5 text-[#3e2723] dark:text-[#d7ccc8]">
-                    {renderInline(cell, onTagClick)}
+                    {renderInline(cell, onTagClick, searchQuery, currentMatchIndex, counter)}
                   </td>
                 ))}
               </tr>
@@ -76,7 +84,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           </div>
         )}
         <pre className="p-4 text-[#f5f5f7] font-mono text-xs overflow-x-auto leading-relaxed">
-          <code>{text}</code>
+          <code>{highlightSearchText(text, searchQuery, currentMatchIndex, counter)}</code>
         </pre>
       </div>
     );
@@ -155,7 +163,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 : 'text-[#3e2723] dark:text-[#efebe9]'
             }`}
           >
-            {renderInline(textAfter, onTagClick)}
+            {renderInline(textAfter, onTagClick, searchQuery, currentMatchIndex, counter)}
           </span>
         </div>
       );
@@ -169,7 +177,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       const itemText = orderedMatch[3];
       elements.push(
         <li key={`oli-${i}`} value={parseInt(num, 10)} className="ml-5 list-decimal text-sm text-[#3e2723] dark:text-[#efebe9] my-1 leading-relaxed">
-          {renderInline(itemText, onTagClick)}
+          {renderInline(itemText, onTagClick, searchQuery, currentMatchIndex, counter)}
         </li>
       );
       continue;
@@ -180,7 +188,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       const itemText = line.replace(/^\s*[-*]\s+/, '');
       elements.push(
         <li key={`li-${i}`} className="ml-5 list-disc text-sm text-[#3e2723] dark:text-[#efebe9] my-1 leading-relaxed">
-          {renderInline(itemText, onTagClick)}
+          {renderInline(itemText, onTagClick, searchQuery, currentMatchIndex, counter)}
         </li>
       );
       continue;
@@ -198,7 +206,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (line.startsWith('# ')) {
       elements.push(
         <h1 key={`h1-${i}`} className="text-2xl font-bold text-[#3e2723] dark:text-[#efebe9] mt-6 mb-2 tracking-tight">
-          {renderInline(line.slice(2), onTagClick)}
+          {renderInline(line.slice(2), onTagClick, searchQuery, currentMatchIndex, counter)}
         </h1>
       );
       continue;
@@ -206,7 +214,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (line.startsWith('## ')) {
       elements.push(
         <h2 key={`h2-${i}`} className="text-xl font-semibold text-[#3e2723] dark:text-[#efebe9] mt-5 mb-2 tracking-tight">
-          {renderInline(line.slice(3), onTagClick)}
+          {renderInline(line.slice(3), onTagClick, searchQuery, currentMatchIndex, counter)}
         </h2>
       );
       continue;
@@ -214,7 +222,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (line.startsWith('### ')) {
       elements.push(
         <h3 key={`h3-${i}`} className="text-lg font-semibold text-[#3e2723] dark:text-[#efebe9] mt-4 mb-1.5">
-          {renderInline(line.slice(4), onTagClick)}
+          {renderInline(line.slice(4), onTagClick, searchQuery, currentMatchIndex, counter)}
         </h3>
       );
       continue;
@@ -222,7 +230,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (line.startsWith('#### ')) {
       elements.push(
         <h4 key={`h4-${i}`} className="text-base font-semibold text-[#3e2723] dark:text-[#efebe9] mt-3.5 mb-1">
-          {renderInline(line.slice(5), onTagClick)}
+          {renderInline(line.slice(5), onTagClick, searchQuery, currentMatchIndex, counter)}
         </h4>
       );
       continue;
@@ -230,7 +238,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (line.startsWith('##### ')) {
       elements.push(
         <h5 key={`h5-${i}`} className="text-sm font-semibold uppercase tracking-wider text-[#6d4c41] dark:text-[#d7ccc8] mt-3 mb-1">
-          {renderInline(line.slice(6), onTagClick)}
+          {renderInline(line.slice(6), onTagClick, searchQuery, currentMatchIndex, counter)}
         </h5>
       );
       continue;
@@ -238,7 +246,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (line.startsWith('###### ')) {
       elements.push(
         <h6 key={`h6-${i}`} className="text-xs font-semibold uppercase tracking-wider text-[#8d6e63] dark:text-[#a1887f] mt-2.5 mb-1">
-          {renderInline(line.slice(7), onTagClick)}
+          {renderInline(line.slice(7), onTagClick, searchQuery, currentMatchIndex, counter)}
         </h6>
       );
       continue;
@@ -251,7 +259,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           key={`quote-${i}`}
           className="border-l-4 border-[#8d6e63] pl-4 py-1 my-3 text-sm italic text-[#6d4c41] dark:text-[#d7ccc8] bg-black/[0.02] dark:bg-white/[0.02] rounded-r-lg"
         >
-          {renderInline(line.slice(2), onTagClick)}
+          {renderInline(line.slice(2), onTagClick, searchQuery, currentMatchIndex, counter)}
         </blockquote>
       );
       continue;
@@ -266,7 +274,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     // 8. Normal paragraph
     elements.push(
       <p key={`p-${i}`} className="text-sm text-[#3e2723] dark:text-[#efebe9] leading-relaxed my-1.5">
-        {renderInline(line, onTagClick)}
+        {renderInline(line, onTagClick, searchQuery, currentMatchIndex, counter)}
       </p>
     );
   }
@@ -278,7 +286,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 };
 
 /**
- * Parses inline formatting:
+ * Parses inline formatting and highlights search occurrences:
  * - Bold: **text**
  * - Italic: *text*
  * - Strikethrough: ~~text~~
@@ -286,8 +294,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
  * - Links: [label](url)
  * - Hashtags: #tag (styled as rounded chips)
  */
-function renderInline(text: string, onTagClick?: (tag: string) => void): React.ReactNode[] {
+function renderInline(
+  text: string,
+  onTagClick?: (tag: string) => void,
+  searchQuery?: string,
+  currentMatchIndex?: number,
+  counter?: { count: number }
+): React.ReactNode[] {
   if (!text) return [];
+
+  const hl = (str: string) => highlightSearchText(str, searchQuery, currentMatchIndex, counter);
 
   // Tokenize regex
   // 1: image, 2: bold, 3: italic, 4: strike, 5: code, 6: link, 7: hashtag
@@ -298,7 +314,7 @@ function renderInline(text: string, onTagClick?: (tag: string) => void): React.R
 
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
+      parts.push(hl(text.slice(lastIndex, match.index)));
     }
 
     const token = match[0];
@@ -316,19 +332,19 @@ function renderInline(text: string, onTagClick?: (tag: string) => void): React.R
     } else if (token.startsWith('**') && token.endsWith('**')) {
       parts.push(
         <strong key={`b-${match.index}`} className="font-semibold text-[#3e2723] dark:text-[#efebe9]">
-          {token.slice(2, -2)}
+          {hl(token.slice(2, -2))}
         </strong>
       );
     } else if (token.startsWith('*') && token.endsWith('*')) {
       parts.push(
         <em key={`i-${match.index}`} className="italic">
-          {token.slice(1, -1)}
+          {hl(token.slice(1, -1))}
         </em>
       );
     } else if (token.startsWith('~~') && token.endsWith('~~')) {
       parts.push(
         <del key={`del-${match.index}`} className="line-through opacity-70">
-          {token.slice(2, -2)}
+          {hl(token.slice(2, -2))}
         </del>
       );
     } else if (token.startsWith('`') && token.endsWith('`')) {
@@ -337,7 +353,7 @@ function renderInline(text: string, onTagClick?: (tag: string) => void): React.R
           key={`c-${match.index}`}
           className="px-1.5 py-0.5 rounded bg-[#e5e2da]/40 dark:bg-[#3a2e2a] font-mono text-xs text-[#6d4c41] dark:text-[#d7ccc8]"
         >
-          {token.slice(1, -1)}
+          {hl(token.slice(1, -1))}
         </code>
       );
     } else if (token.startsWith('[') && token.includes('](') && token.endsWith(')')) {
@@ -351,7 +367,7 @@ function renderInline(text: string, onTagClick?: (tag: string) => void): React.R
           rel="noopener noreferrer"
           className="text-[#b3261e] hover:underline font-medium inline-flex items-center gap-0.5"
         >
-          <span>{label}</span>
+          <span>{hl(label)}</span>
           <span className="text-[10px]">&#8599;</span>
         </a>
       );
@@ -366,18 +382,18 @@ function renderInline(text: string, onTagClick?: (tag: string) => void): React.R
           }}
           className="inline-block mx-0.5 px-2 py-0.5 rounded-md bg-[#e5e2da]/70 dark:bg-[#3a2e2a] text-xs font-mono font-medium text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-[#8d6e63]/20 cursor-pointer transition-colors"
         >
-          #{tagName}
+          #{hl(tagName)}
         </span>
       );
     } else {
-      parts.push(token);
+      parts.push(hl(token));
     }
 
     lastIndex = regex.lastIndex;
   }
 
   if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+    parts.push(hl(text.slice(lastIndex)));
   }
 
   return parts;

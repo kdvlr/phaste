@@ -257,11 +257,18 @@ export const App: React.FC = () => {
     },
   });
 
+  // Filtered / Searched phastes
+  const displayedPhastes = searchResults !== null ? searchResults : phastes;
+
   // Derived selected phaste without causing re-renders of the list!
   const selectedPhaste = useMemo(() => {
-    if (!selectedPhasteId) return phastes[0] || null;
-    return phastes.find((p) => p.id === selectedPhasteId) || phastes[0] || null;
-  }, [phastes, selectedPhasteId]);
+    if (!displayedPhastes.length) return null;
+    if (selectedPhasteId) {
+      const found = displayedPhastes.find((p) => p.id === selectedPhasteId);
+      if (found) return found;
+    }
+    return displayedPhastes[0] || null;
+  }, [displayedPhastes, selectedPhasteId]);
 
   // 7. Instant Create Phaste Handler (0ms optimistic response)
   const handleNewPhaste = async () => {
@@ -500,8 +507,6 @@ export const App: React.FC = () => {
     }
   }, [selectedCollection, selectedCategory]);
 
-  const displayedPhastes = searchResults !== null ? searchResults : phastes;
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#f5f5f7] dark:bg-[#1b1614] text-[#3e2723] dark:text-[#efebe9] font-sans antialiased">
       {/* Drag & Drop Visual Overlay */}
@@ -585,6 +590,7 @@ export const App: React.FC = () => {
             if (window.innerWidth < 768) setMobileScreen('list');
           }}
           onNewPhaste={handleNewPhaste}
+          searchQuery={searchQuery}
         />
       </div>
 

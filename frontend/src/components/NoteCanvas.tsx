@@ -21,6 +21,10 @@ import {
   Folder,
   Plus,
   Clipboard,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  FileText,
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { getMediaUrl, updatePhaste, uploadPhasteFile, aiEnrichPhaste } from '../api';
@@ -30,6 +34,7 @@ import {
   readClipboardMarkdown,
   parseMarkdownPhaste,
 } from '../utils/markdownClipboard';
+import { countSearchMatches, highlightSearchText } from '../utils/searchHighlight';
 import { AgentThinking } from './base/AgentThinking';
 import { ScrollFade, useScrollFade } from './base/ScrollFade';
 import { Kbd } from './base/Kbd';
@@ -45,6 +50,7 @@ interface NoteCanvasProps {
   onShowToast: (msg: string, type?: 'info' | 'success' | 'error') => void;
   onCategoryClick?: (category: string) => void;
   onNewPhaste?: () => void;
+  searchQuery?: string;
 }
 
 export const NoteCanvas: React.FC<NoteCanvasProps> = ({
@@ -58,6 +64,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
   onShowToast,
   onCategoryClick,
   onNewPhaste,
+  searchQuery,
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -66,9 +73,85 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
   const [isEnriching, setIsEnriching] = useState(false);
 
   const canvasFade = useScrollFade();
+  const canvasScrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<any>(null);
+
+  // Search match navigation state
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // Calculate total search matches in this note
+  const totalMatches = React.useMemo(() => {
+    if (!searchQuery || !searchQuery.trim() || !phaste) return 0;
+    const fullDoc = `${phaste.title || ''} ${phaste.content || ''} ${phaste.ocr_transcript || ''}`;
+    return countSearchMatches(fullDoc, searchQuery);
+  }, [phaste, searchQuery]);
+
+  const handleNextMatch = React.useCallback(() => {
+    if (totalMatches <= 1) return;
+    setCurrentMatchIndex((prev) => (prev + 1) % totalMatches);
+  }, [totalMatches]);
+
+  const handlePrevMatch = React.useCallback(() => {
+    if (totalMatches <= 1) return;
+    setCurrentMatchIndex((prev) => (prev - 1 + totalMatches) % totalMatches);
+  }, [totalMatches]);
+
+  // Reset match index when selected note or query changes
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [phaste?.id, searchQuery]);
+
+  // Smoothly scroll to the active search match
+  useEffect(() => {
+    if (!searchQuery || !searchQuery.trim() || totalMatches === 0) return;
+
+    const timer = setTimeout(() => {
+      const container = canvasScrollContainerRef.current;
+      if (!container) return;
+
+      const targetMark =
+        container.querySelector(`mark[data-search-match="${currentMatchIndex}"]`) ||
+        container.querySelector('mark.search-highlight');
+
+      if (targetMark) {
+        targetMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [phaste?.id, searchQuery, currentMatchIndex, totalMatches]);
+
+  // Keyboard and custom event listener for search match navigation
+  useEffect(() => {
+    const handleSearchNavigate = (e: any) => {
+      if (e.detail?.direction === 'prev') handlePrevMatch();
+      else handleNextMatch();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        if (e.shiftKey) handlePrevMatch();
+        else handleNextMatch();
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        if (e.shiftKey) handlePrevMatch();
+        else handleNextMatch();
+      }
+    };
+
+    window.addEventListener('phaste:search-navigate', handleSearchNavigate);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('phaste:search-navigate', handleSearchNavigate);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleNextMatch, handlePrevMatch]);
+
+  // Counter passed to elements for 1:1 match indexing
+  const globalMatchCounter = { count: 0 };
 
   // Sync state when active phaste changes
   useEffect(() => {
@@ -335,6 +418,39 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
               <span>{phaste.category || 'Uncategorized'}</span>
             </button>
           )}
+
+          {/* Search Match Indicator & Navigation Controls */}
+          {searchQuery && searchQuery.trim() && (
+            <div className="flex items-center space-x-1 sm:space-x-2 px-2.5 py-1 rounded-full bg-amber-500/10 dark:bg-amber-400/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-medium shadow-xs">
+              <Search className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold truncate max-w-[80px] sm:max-w-[130px]">
+                "{searchQuery}"
+              </span>
+              <span className="text-[11px] opacity-80 shrink-0 font-mono">
+                {totalMatches > 0 ? `${currentMatchIndex + 1}/${totalMatches}` : '0 in note'}
+              </span>
+              {totalMatches > 0 && (
+                <div className="flex items-center space-x-0.5 border-l border-amber-500/25 pl-1.5 ml-0.5">
+                  <button
+                    onClick={handlePrevMatch}
+                    className="p-0.5 hover:bg-amber-500/20 active:bg-amber-500/30 rounded text-amber-800 dark:text-amber-200 transition-colors"
+                    title="Previous match (Shift+Enter or ⌘⇧G)"
+                    aria-label="Previous match"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={handleNextMatch}
+                    className="p-0.5 hover:bg-amber-500/20 active:bg-amber-500/30 rounded text-amber-800 dark:text-amber-200 transition-colors"
+                    title="Next match (Enter or ⌘G)"
+                    aria-label="Next match"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Action Icons: B I U toggle, Sparkles, Pin, Share, Inspector i, Trash */}
@@ -415,19 +531,28 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
       {/* Main Note Canvas Body with BoardUI ScrollFade */}
       <div className="relative flex-1 min-h-0 flex flex-col">
         <div
+          ref={canvasScrollContainerRef}
           onScroll={canvasFade.onScroll}
           className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 max-w-4xl mx-auto w-full pb-32"
         >
           {/* Large Note Title (Editable with Leading Emoji) */}
           <div className="mb-6">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="🐼 Phaste Title..."
-            className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent text-[#3e2723] dark:text-[#efebe9] border-none focus:outline-none focus:ring-0 placeholder:text-[#a1887f]/50"
-          />
-        </div>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              placeholder="🐼 Phaste Title..."
+              className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent text-[#3e2723] dark:text-[#efebe9] border-none focus:outline-none focus:ring-0 placeholder:text-[#a1887f]/50"
+            />
+            {searchQuery && searchQuery.trim() && title.toLowerCase().includes(searchQuery.trim().toLowerCase()) && (
+              <div className="mt-1 text-xs text-[#8d6e63] dark:text-[#a1887f] flex items-center space-x-1.5">
+                <span className="opacity-70">Title match:</span>
+                <span className="font-medium">
+                  {highlightSearchText(title, searchQuery, currentMatchIndex, globalMatchCounter)}
+                </span>
+              </div>
+            )}
+          </div>
 
         {/* Hero Media (Image or Video) */}
         {heroMediaUrl && phaste.kind === 'image' && (
@@ -527,12 +652,28 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
                 content={content}
                 onToggleCheckbox={handleToggleCheckbox}
                 onTagClick={onCategoryClick}
+                searchQuery={searchQuery}
+                currentMatchIndex={currentMatchIndex}
+                globalMatchCounter={globalMatchCounter}
               />
             ) : (
               <div className="text-sm text-[#a1887f] italic py-8">
                 Click here or use the toolbar below to start writing.
               </div>
             )}
+          </div>
+        )}
+
+        {/* Extracted OCR Image Transcript (searchable and highlightable) */}
+        {phaste.ocr_transcript && phaste.kind === 'image' && (
+          <div className="mt-8 pt-6 border-t border-[#e5e2da]/50 dark:border-[#4e342e]/50">
+            <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-[#a1887f] mb-3">
+              <FileText className="w-3.5 h-3.5" />
+              <span>Extracted Image Text (OCR)</span>
+            </div>
+            <div className="p-4 rounded-xl bg-[#fbfbfa] dark:bg-[#241e1b] border border-[#e5e2da]/50 dark:border-[#4e342e]/50 font-sans text-sm leading-relaxed text-[#3e2723] dark:text-[#d7ccc8]">
+              {highlightSearchText(phaste.ocr_transcript, searchQuery, currentMatchIndex, globalMatchCounter)}
+            </div>
           </div>
         )}
         </div>
