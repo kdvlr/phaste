@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPhasteText, uploadPhasteFile } from '../api';
 import { Phaste } from '../types';
 import { parseMarkdownPhaste } from '../utils/markdownClipboard';
@@ -26,13 +26,26 @@ export function useAmbientCapture({
 }: AmbientCaptureOptions) {
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const lastPasteTimeRef = useRef<number>(0);
 
   useEffect(() => {
     // 1. Global Clipboard Paste Listener
     const handlePaste = async (e: ClipboardEvent) => {
       // If typing in an input/textarea and pasting plain text, let normal paste happen
-      const activeTag = document.activeElement?.tagName.toLowerCase();
-      const isInputFocused = activeTag === 'input' || activeTag === 'textarea';
+      const activeElement = document.activeElement as HTMLElement | null;
+      const activeTag = activeElement?.tagName.toLowerCase();
+      const isInputFocused =
+        activeTag === 'input' ||
+        activeTag === 'textarea' ||
+        activeElement?.isContentEditable === true;
+
+      // Prevent duplicate rapid paste triggers within 450ms
+      const now = Date.now();
+      if (!isInputFocused && now - lastPasteTimeRef.current < 450) {
+        e.preventDefault();
+        return;
+      }
+      lastPasteTimeRef.current = now;
 
       const items = e.clipboardData?.items;
       if (!items || items.length === 0) return;

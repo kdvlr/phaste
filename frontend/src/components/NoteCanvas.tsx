@@ -163,7 +163,13 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
       setTitle(phaste.title || '');
       setContent(noteContent);
       // If note has no content, open directly in edit mode for immediate typing or pasting
-      setIsEditMode(!noteContent.trim() || phaste.id.startsWith('temp-'));
+      const shouldEdit = !noteContent.trim() || phaste.id.startsWith('temp-');
+      setIsEditMode(shouldEdit);
+      if (shouldEdit) {
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 60);
+      }
     } else {
       setTitle('');
       setContent('');
@@ -206,6 +212,45 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
       onShowToast('Markdown pasted and formatted!', 'success');
     } catch (err: any) {
       onShowToast('Failed to read clipboard', 'error');
+    }
+  };
+
+  const handleCanvasPaste = (e: React.ClipboardEvent) => {
+    // If the event originated inside an input or textarea, let it handle it
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      return;
+    }
+
+    const file = e.clipboardData.files?.[0];
+    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+      return; // Let ambient capture handle binary media uploads
+    }
+
+    const html = e.clipboardData.getData('text/html');
+    const plain = e.clipboardData.getData('text/plain');
+
+    if (html || plain) {
+      const markdown = processClipboardToMarkdown(html, plain);
+      if (markdown) {
+        e.preventDefault();
+        e.stopPropagation(); // Stop global window listener from creating a duplicate phaste
+
+        let nextTitle = title;
+        if (!title || title === '📝 Untitled Phaste' || title === 'Untitled Phaste') {
+          const parsed = parseMarkdownPhaste({ plain: markdown });
+          if (parsed.title && parsed.title !== '📝 Untitled Phaste') {
+            nextTitle = parsed.title;
+            setTitle(nextTitle);
+          }
+        }
+
+        const newContent = content ? `${content}\n\n${markdown}` : markdown;
+        setContent(newContent);
+        setIsEditMode(false);
+        triggerAutoSave(nextTitle, newContent);
+        onShowToast('Markdown pasted into note!', 'success');
+      }
     }
   };
 
@@ -533,6 +578,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
         <div
           ref={canvasScrollContainerRef}
           onScroll={canvasFade.onScroll}
+          onPaste={handleCanvasPaste}
           className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 max-w-4xl mx-auto w-full pb-32"
         >
           {/* Large Note Title (Editable with Leading Emoji) */}

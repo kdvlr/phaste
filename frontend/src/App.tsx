@@ -205,16 +205,26 @@ export const App: React.FC = () => {
   // 5. Global Ambient Capture (Cmd+V clipboard & Drag-and-Drop) with Instant Optimistic UI
   const { isDragging } = useAmbientCapture({
     onOptimisticCreate: (tempPhaste) => {
-      setPhastes((prev) => [tempPhaste, ...prev]);
+      setPhastes((prev) => [tempPhaste, ...prev.filter((p) => p.id !== tempPhaste.id)]);
       setSelectedPhasteId(tempPhaste.id);
       setMobileScreen('detail');
     },
     onSuccess: (realItem, msg, tempId) => {
-      setPhastes((prev) =>
-        tempId
-          ? prev.map((p) => (p.id === tempId ? realItem : p))
-          : [realItem, ...prev.filter((p) => p.id !== realItem.id)]
-      );
+      setPhastes((prev) => {
+        // If SSE already delivered this item, just remove the optimistic temp placeholder
+        const alreadyHasReal = prev.some((p) => p.id === realItem.id);
+        if (alreadyHasReal) {
+          return prev.filter((p) => p.id !== tempId);
+        }
+        if (tempId) {
+          const replaced = prev.map((p) => (p.id === tempId ? realItem : p));
+          // Deduplicate items to prevent double cards
+          return replaced.filter(
+            (p, idx, self) => idx === self.findIndex((item) => item.id === p.id)
+          );
+        }
+        return [realItem, ...prev.filter((p) => p.id !== realItem.id)];
+      });
       setSelectedPhasteId(realItem.id);
       loadCategories();
       showToast(msg, 'success');
@@ -231,7 +241,17 @@ export const App: React.FC = () => {
   useEvents({
     onPhasteCreated: (newItem) => {
       setPhastes((prev) => {
+        // If the real item is already present, don't duplicate
         if (prev.some((p) => p.id === newItem.id)) return prev;
+
+        // If an optimistic temp item exists, replace it with newItem
+        const tempIdx = prev.findIndex((p) => p.id.startsWith('temp-'));
+        if (tempIdx !== -1) {
+          const next = [...prev];
+          next[tempIdx] = newItem;
+          return next;
+        }
+
         return [newItem, ...prev];
       });
       loadCategories();
@@ -257,8 +277,16 @@ export const App: React.FC = () => {
     },
   });
 
-  // Filtered / Searched phastes
-  const displayedPhastes = searchResults !== null ? searchResults : phastes;
+  // Filtered / Searched phastes (with strict ID deduplication guard)
+  const rawDisplayed = searchResults !== null ? searchResults : phastes;
+  const displayedPhastes = useMemo(() => {
+    const seen = new Set<string>();
+    return rawDisplayed.filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [rawDisplayed]);
 
   // Derived selected phaste without causing re-renders of the list!
   const selectedPhaste = useMemo(() => {
@@ -296,13 +324,19 @@ export const App: React.FC = () => {
     };
 
     // Deliver immediately to UI (<1ms)
-    setPhastes((prev) => [optimistic, ...prev]);
+    setPhastes((prev) => [optimistic, ...prev.filter((p) => p.id !== tempId)]);
     setSelectedPhasteId(tempId);
     setMobileScreen('detail');
 
     try {
       const realItem = await createPhasteText(initialText, 'text', '📝 Untitled Phaste', selectedCategory || undefined);
-      setPhastes((prev) => prev.map((p) => (p.id === tempId ? realItem : p)));
+      setPhastes((prev) => {
+        const alreadyHasReal = prev.some((p) => p.id === realItem.id);
+        if (alreadyHasReal) {
+          return prev.filter((p) => p.id !== tempId);
+        }
+        return prev.map((p) => (p.id === tempId ? realItem : p));
+      });
       setSelectedPhasteId(realItem.id);
       loadCategories();
       showToast('Created new phaste', 'success');
