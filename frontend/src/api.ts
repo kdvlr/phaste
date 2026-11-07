@@ -169,6 +169,46 @@ export async function fetchCategories(): Promise<CategoriesResponse> {
   return res.json();
 }
 
+export async function createCategory(name: string): Promise<{ name: string; count: number }> {
+  const res = await fetch(`${API_BASE}/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create category');
+  }
+  return res.json();
+}
+
+export async function renameCategory(
+  oldName: string,
+  newName: string
+): Promise<{ old_name: string; new_name: string; count?: number }> {
+  const res = await fetch(`${API_BASE}/categories/${encodeURIComponent(oldName)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_name: newName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to rename category');
+  }
+  return res.json();
+}
+
+export async function deleteCategory(name: string): Promise<{ deleted: string; count?: number }> {
+  const res = await fetch(`${API_BASE}/categories/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete category');
+  }
+  return res.json();
+}
+
 export async function searchPhastes(query: string, limit: number = 50): Promise<SearchResponse> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
   const res = await fetch(`${API_BASE}/search?${params.toString()}`);

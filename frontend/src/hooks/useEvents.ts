@@ -6,6 +6,9 @@ interface EventsHandler {
   onPhasteProcessed?: (phaste: Phaste) => void;
   onPhasteUpdated?: (phaste: Partial<Phaste> & { id: string }) => void;
   onPhasteDeleted?: (data: { id: string }) => void;
+  onCategoryCreated?: (data: { name: string }) => void;
+  onCategoryRenamed?: (data: { old_name: string; new_name: string; count?: number }) => void;
+  onCategoryDeleted?: (data: { name: string; count?: number }) => void;
 }
 
 export function useEvents(handlers: EventsHandler) {
@@ -30,6 +33,12 @@ export function useEvents(handlers: EventsHandler) {
             handlers.onPhasteUpdated(data);
           } else if (type === 'phaste.deleted' && handlers.onPhasteDeleted) {
             handlers.onPhasteDeleted(data);
+          } else if (type === 'category.created' && handlers.onCategoryCreated) {
+            handlers.onCategoryCreated(data);
+          } else if (type === 'category.renamed' && handlers.onCategoryRenamed) {
+            handlers.onCategoryRenamed(data);
+          } else if (type === 'category.deleted' && handlers.onCategoryDeleted) {
+            handlers.onCategoryDeleted(data);
           }
         } catch (e) {
           // ignore heartbeat / invalid json

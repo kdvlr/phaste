@@ -5,7 +5,12 @@ from app.schemas.phaste import (
     PhasteListResponse,
     ClientContext,
     SearchResponse,
-    SearchResultItem
+    SearchResultItem,
+)
+from app.schemas.category import (
+    CategoryCreate,
+    CategoryRename,
+    CategoryResponse,
 )
 
 __all__ = [
@@ -15,5 +20,8 @@ __all__ = [
     "PhasteListResponse",
     "ClientContext",
     "SearchResponse",
-    "SearchResultItem"
+    "SearchResultItem",
+    "CategoryCreate",
+    "CategoryRename",
+    "CategoryResponse",
 ]

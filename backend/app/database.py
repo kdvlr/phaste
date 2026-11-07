@@ -57,3 +57,22 @@ async def init_db():
               AND tags IS NOT NULL
               AND jsonb_array_length(tags) > 0;
         """))
+        # Ensure categories table exists
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS categories (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(128) UNIQUE NOT NULL,
+                icon VARCHAR(64),
+                color VARCHAR(32),
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_categories_name ON categories (name);
+        """))
+        # Seed categories table with any distinct categories from phastes
+        await conn.execute(text("""
+            INSERT INTO categories (id, name, created_at)
+            SELECT gen_random_uuid(), INITCAP(TRIM(category)), NOW()
+            FROM phastes
+            WHERE category IS NOT NULL AND TRIM(category) != ''
+            ON CONFLICT (name) DO NOTHING;
+        """))

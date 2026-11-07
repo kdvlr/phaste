@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   FileText,
   FileQuestion,
@@ -28,6 +28,9 @@ import {
   X,
   Folder,
   Plus,
+  MoreHorizontal,
+  Pencil,
+  FolderPlus,
 } from 'lucide-react';
 import { CollectionType, CategoryItem, SystemCollections } from '../types';
 import { ThemeMode } from '../utils/theme';
@@ -48,6 +51,9 @@ interface SidebarProps {
   onCloseMobile?: () => void;
   onEmptyTrash?: () => void;
   onNewPhaste: () => void;
+  onCreateCategory?: (name: string) => Promise<void>;
+  onRenameCategory?: (oldName: string, newName: string) => Promise<void>;
+  onDeleteCategory?: (name: string) => Promise<void>;
 }
 
 // Maps category names to contextual Lucide icons
@@ -81,8 +87,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
   onEmptyTrash,
   onNewPhaste,
+  onCreateCategory,
+  onRenameCategory,
+  onDeleteCategory,
 }) => {
   const [isPhastesExpanded, setIsPhastesExpanded] = useState(true);
+
+  // Category creation & inline editing state
+  const [isCreating, setIsCreating] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const createInputRef = useRef<HTMLInputElement>(null);
+
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const [menuOpenCategory, setMenuOpenCategory] = useState<string | null>(null);
+
+  // Tap-and-pause tracker
+  const pressTimerRef = useRef<any>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isLongPressRef = useRef<boolean>(false);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!menuOpenCategory) return;
+    const handleOutsideClick = () => setMenuOpenCategory(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [menuOpenCategory]);
 
   const handleSelectCollection = (col: CollectionType) => {
     onSelectCategory(null);
@@ -93,6 +125,119 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleSelectCategory = (cat: string) => {
     onSelectCategory(cat);
     if (onCloseMobile) onCloseMobile();
+  };
+
+  const startRename = (name: string) => {
+    setEditingCategory(name);
+    setRenameValue(name);
+    setTimeout(() => {
+      if (renameInputRef.current) {
+        renameInputRef.current.focus();
+        renameInputRef.current.select();
+      }
+    }, 50);
+  };
+
+  const handleRenameSubmit = async (oldName: string) => {
+    const trimmed = renameValue.trim();
+    setEditingCategory(null);
+    if (!trimmed || trimmed === oldName) return;
+    if (onRenameCategory) {
+      await onRenameCategory(oldName, trimmed);
+    }
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent, oldName: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleRenameSubmit(oldName);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditingCategory(null);
+    }
+  };
+
+  const handleStartCreate = () => {
+    setIsCreating(true);
+    setNewCategoryName('');
+    setTimeout(() => {
+      createInputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleCreateSubmit = async () => {
+    const trimmed = newCategoryName.trim();
+    setIsCreating(false);
+    if (!trimmed) return;
+    if (onCreateCategory) {
+      await onCreateCategory(trimmed);
+    }
+  };
+
+  const handleCreateKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCreateSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsCreating(false);
+    }
+  };
+
+  // Pointer events for "tap and pause" to rename
+  const handlePointerDown = (catName: string, e: React.PointerEvent) => {
+    touchStartPosRef.current = { x: e.clientX, y: e.clientY };
+    isLongPressRef.current = false;
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+
+    // Tap and pause timer (420ms)
+    pressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      startRename(catName);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+    }, 420);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!touchStartPosRef.current) return;
+    const dx = Math.abs(e.clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(e.clientY - touchStartPosRef.current.y);
+    if (dx > 8 || dy > 8) {
+      // User is scrolling or moving pointer, cancel tap-and-pause
+      if (pressTimerRef.current) {
+        clearTimeout(pressTimerRef.current);
+        pressTimerRef.current = null;
+      }
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  };
+
+  const handleCategoryClick = (catName: string, e: React.MouseEvent) => {
+    // If tap-and-pause / long-press already activated rename, don't re-select
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+
+    if (editingCategory === catName) {
+      return;
+    }
+
+    if (selectedCategory === catName) {
+      // Already selected category: tapping it enters rename mode (tap and pause / click selected)
+      startRename(catName);
+    } else {
+      handleSelectCategory(catName);
+    }
   };
 
   return (
@@ -340,38 +485,158 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Dynamic Categories Section */}
           <div className="pt-2 border-t border-[#3a2e2a]/40">
-            <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-[#a1887f]">
-              Categories
+            <div className="flex items-center justify-between px-2 py-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#a1887f]">
+                Categories
+              </span>
+              <button
+                type="button"
+                onClick={handleStartCreate}
+                className="p-1 rounded-md text-[#a1887f] hover:text-[#efebe9] hover:bg-[#3a2e2a] active:scale-95 transition-all"
+                title="Create New Category (+)"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
             </div>
 
             <div className="mt-1 space-y-0.5">
-              {categories.length === 0 ? (
+              {/* Inline Create Input */}
+              {isCreating && (
+                <div className="flex items-center space-x-2 px-2.5 py-1.5 rounded-lg bg-[#3a2e2a] text-white animate-in fade-in duration-150">
+                  <FolderPlus className="w-3.5 h-3.5 text-[#ffbd2e] shrink-0" />
+                  <input
+                    ref={createInputRef}
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={handleCreateKeyDown}
+                    onBlur={handleCreateSubmit}
+                    placeholder="New category..."
+                    className="w-full bg-[#1b1614] text-xs text-white font-medium px-2 py-0.5 rounded border border-[#ffbd2e] focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {categories.length === 0 && !isCreating ? (
                 <div className="px-3 py-2 text-xs text-[#a1887f]/70 italic">
-                  No categories yet. Automatically detected by LiteLLM.
+                  No categories yet. Click + to add one.
                 </div>
               ) : (
                 categories.map((cat) => {
                   const IconComponent = getCategoryIcon(cat.name);
                   const isSelected = selectedCategory === cat.name;
+                  const isEditing = editingCategory === cat.name;
+
+                  if (isEditing) {
+                    return (
+                      <div
+                        key={cat.name}
+                        className="flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-[#3a2e2a] text-white"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <IconComponent className="w-3.5 h-3.5 text-[#ffbd2e] shrink-0" />
+                        <input
+                          ref={renameInputRef}
+                          type="text"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => handleRenameKeyDown(e, cat.name)}
+                          onBlur={() => handleRenameSubmit(cat.name)}
+                          className="w-full bg-[#1b1614] text-xs text-white font-medium px-1.5 py-0.5 rounded border border-[#ffbd2e] focus:outline-none"
+                          autoFocus
+                        />
+                      </div>
+                    );
+                  }
 
                   return (
-                    <button
+                    <div
                       key={cat.name}
-                      onClick={() => handleSelectCategory(cat.name)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors group ${
+                      onPointerDown={(e) => handlePointerDown(cat.name, e)}
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      onPointerCancel={handlePointerUp}
+                      onClick={(e) => handleCategoryClick(cat.name, e)}
+                      onDoubleClick={() => startRename(cat.name)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors group cursor-pointer select-none relative ${
                         isSelected
                           ? 'bg-[#3a2e2a] text-white font-medium'
                           : 'text-[#d7ccc8] hover:bg-[#2d2421]'
                       }`}
+                      title={isSelected ? 'Tap again or pause to rename' : 'Click to filter, tap & pause to rename'}
                     >
-                      <div className="flex items-center space-x-2.5 truncate">
-                        <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#ffbd2e]' : 'text-[#a1887f] group-hover:text-[#d7ccc8]'}`} />
+                      <div className="flex items-center space-x-2.5 truncate flex-1 min-w-0">
+                        <IconComponent
+                          className={`w-3.5 h-3.5 shrink-0 ${
+                            isSelected
+                              ? 'text-[#ffbd2e]'
+                              : 'text-[#a1887f] group-hover:text-[#d7ccc8]'
+                          }`}
+                        />
                         <span className="truncate">{cat.name}</span>
                       </div>
-                      <span className="text-xs px-1.5 py-0.2 text-[#a1887f] shrink-0 font-mono">
-                        {cat.count}
-                      </span>
-                    </button>
+
+                      <div className="flex items-center space-x-1 shrink-0 ml-1.5">
+                        {/* More options button on hover */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenCategory(
+                                menuOpenCategory === cat.name ? null : cat.name
+                              );
+                            }}
+                            className="p-1 rounded text-[#a1887f] hover:text-[#efebe9] hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Category options"
+                          >
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          </button>
+
+                          {menuOpenCategory === cat.name && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute right-0 top-full mt-1 z-30 w-32 bg-[#2d2421] border border-[#4e342e] rounded-xl shadow-xl py-1 text-xs"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuOpenCategory(null);
+                                  startRename(cat.name);
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-[#3a2e2a] text-[#efebe9] flex items-center space-x-2"
+                              >
+                                <Pencil className="w-3 h-3 text-[#ffbd2e]" />
+                                <span>Rename</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuOpenCategory(null);
+                                  if (
+                                    onDeleteCategory &&
+                                    confirm(
+                                      `Delete category "${cat.name}"? Notes will become uncategorized.`
+                                    )
+                                  ) {
+                                    onDeleteCategory(cat.name);
+                                  }
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-[#b3261e]/20 text-[#f2b8b5] flex items-center space-x-2"
+                              >
+                                <Trash2 className="w-3 h-3 text-[#b3261e]" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <span className="text-xs px-1.5 py-0.2 text-[#a1887f] shrink-0 font-mono">
+                          {cat.count}
+                        </span>
+                      </div>
+                    </div>
                   );
                 })
               )}

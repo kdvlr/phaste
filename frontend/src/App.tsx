@@ -16,6 +16,9 @@ import {
   updatePhaste,
   deletePhaste,
   emptyTrash,
+  createCategory,
+  renameCategory,
+  deleteCategory,
   requestAndCacheLocation,
   requestLocationPermission,
   getLocationStatus,
@@ -275,6 +278,35 @@ export const App: React.FC = () => {
       setSelectedPhasteId((curr) => (curr === id ? null : curr));
       loadCategories();
     },
+    onCategoryCreated: () => {
+      loadCategories();
+    },
+    onCategoryRenamed: ({ old_name, new_name }) => {
+      setPhastes((prev) =>
+        prev.map((p) =>
+          p.category && p.category.toLowerCase() === old_name.toLowerCase()
+            ? { ...p, category: new_name }
+            : p
+        )
+      );
+      setSelectedCategory((curr) =>
+        curr && curr.toLowerCase() === old_name.toLowerCase() ? new_name : curr
+      );
+      loadCategories();
+    },
+    onCategoryDeleted: ({ name }) => {
+      setPhastes((prev) =>
+        prev.map((p) =>
+          p.category && p.category.toLowerCase() === name.toLowerCase()
+            ? { ...p, category: null }
+            : p
+        )
+      );
+      setSelectedCategory((curr) =>
+        curr && curr.toLowerCase() === name.toLowerCase() ? null : curr
+      );
+      loadCategories();
+    },
   });
 
   // Filtered / Searched phastes (with strict ID deduplication guard)
@@ -515,6 +547,61 @@ export const App: React.FC = () => {
     loadCategories();
   };
 
+  // Category management handlers
+  const handleCreateCategory = async (name: string) => {
+    try {
+      const res = await createCategory(name);
+      await loadCategories();
+      setSelectedCategory(res.name);
+      showToast(`Created category "${res.name}"`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to create category', 'error');
+    }
+  };
+
+  const handleRenameCategory = async (oldName: string, newName: string) => {
+    try {
+      // Optimistic update in phastes state
+      setPhastes((prev) =>
+        prev.map((p) =>
+          p.category && p.category.toLowerCase() === oldName.toLowerCase()
+            ? { ...p, category: newName }
+            : p
+        )
+      );
+      if (selectedCategory && selectedCategory.toLowerCase() === oldName.toLowerCase()) {
+        setSelectedCategory(newName);
+      }
+      await renameCategory(oldName, newName);
+      await loadCategories();
+      showToast(`Renamed to "${newName}"`, 'success');
+    } catch (err: any) {
+      await loadCategories();
+      showToast(err.message || 'Failed to rename category', 'error');
+    }
+  };
+
+  const handleDeleteCategory = async (name: string) => {
+    try {
+      setPhastes((prev) =>
+        prev.map((p) =>
+          p.category && p.category.toLowerCase() === name.toLowerCase()
+            ? { ...p, category: null }
+            : p
+        )
+      );
+      if (selectedCategory && selectedCategory.toLowerCase() === name.toLowerCase()) {
+        setSelectedCategory(null);
+      }
+      await deleteCategory(name);
+      await loadCategories();
+      showToast(`Deleted category "${name}"`, 'success');
+    } catch (err: any) {
+      await loadCategories();
+      showToast(err.message || 'Failed to delete category', 'error');
+    }
+  };
+
   // Header Title in middle column
   const activeTitle = useMemo(() => {
     if (selectedCategory) return selectedCategory;
@@ -579,6 +666,9 @@ export const App: React.FC = () => {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onEmptyTrash={handleEmptyTrashRequest}
         onNewPhaste={handleNewPhaste}
+        onCreateCategory={handleCreateCategory}
+        onRenameCategory={handleRenameCategory}
+        onDeleteCategory={handleDeleteCategory}
       />
 
       {/* Pane 2: Phastes List Column */}
