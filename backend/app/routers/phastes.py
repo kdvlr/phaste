@@ -647,13 +647,13 @@ async def create_phaste(
 
     # Case 2: Text or URL Payload
     else:
-        if not content or not content.strip():
-            raise HTTPException(status_code=400, detail="Content or file is required.")
+        if not file and content is None and not (title and title.strip()):
+            raise HTTPException(status_code=400, detail="Content, title, or file is required.")
 
-        content_clean = content.strip()
+        content_clean = (content or "").strip()
 
         # Check if URL
-        if is_valid_url(content_clean):
+        if content_clean and is_valid_url(content_clean):
             source_url = content_clean
 
             # Check if video platform link
@@ -674,7 +674,7 @@ async def create_phaste(
         else:
             if not kind:
                 # Detect rich text (Markdown / HTML) vs plain text
-                if any(tag in content_clean for tag in ["# ", "```", "* ", "- ", "<b>", "<div>"]):
+                if content_clean and any(tag in content_clean for tag in ["# ", "```", "* ", "- ", "<b>", "<div>"]):
                     kind = "richtext"
                 else:
                     kind = "text"
@@ -713,8 +713,9 @@ async def create_phaste(
     await db.commit()
     await db.refresh(phaste)
 
-    # Dispatch background worker for heavy processing and AI enrichment
-    background_tasks.add_task(run_background_enrichment, phaste.id)
+    # Dispatch background worker for heavy processing and AI enrichment if content or media is present
+    if content_clean or file or source_url:
+        background_tasks.add_task(run_background_enrichment, phaste.id)
 
     # Publish creation event
     resp_obj = PhasteResponse.model_validate(phaste)

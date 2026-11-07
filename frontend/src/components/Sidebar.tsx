@@ -27,9 +27,11 @@ import {
   Plane,
   X,
   Folder,
+  Plus,
 } from 'lucide-react';
 import { CollectionType, CategoryItem, SystemCollections } from '../types';
 import { ThemeMode } from '../utils/theme';
+import { Kbd } from './base/Kbd';
 
 interface SidebarProps {
   selectedCollection: CollectionType;
@@ -45,6 +47,7 @@ interface SidebarProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
   onEmptyTrash?: () => void;
+  onNewPhaste: () => void;
 }
 
 // Maps category names to contextual Lucide icons
@@ -77,6 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen = false,
   onCloseMobile,
   onEmptyTrash,
+  onNewPhaste,
 }) => {
   const [isPhastesExpanded, setIsPhastesExpanded] = useState(true);
 
@@ -134,6 +138,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             )}
           </div>
+        </div>
+
+        {/* Create New Phaste Button */}
+        <div className="px-3 pt-3 pb-1 shrink-0">
+          <button
+            onClick={() => {
+              onNewPhaste();
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#8d6e63] hover:bg-[#795548] active:bg-[#6d4c41] text-white font-medium text-xs shadow-sm hover:shadow active:scale-[0.99] transition-all group"
+            title="Create new phaste (⌘N)"
+          >
+            <div className="flex items-center space-x-2">
+              <Plus className="w-4 h-4 transition-transform group-hover:scale-110" />
+              <span>New Phaste</span>
+            </div>
+            <Kbd className="bg-white/20 text-white/95 border-white/10 text-[10px] px-1.5 py-0.5">⌘N</Kbd>
+          </button>
         </div>
 
         {/* Scrollable Navigation */}

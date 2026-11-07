@@ -11,6 +11,7 @@ import {
   Video as VideoIcon,
   Link as LinkIcon,
   Folder,
+  Plus,
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { getMediaUrl } from '../api';
@@ -128,10 +129,11 @@ export const NotesList: React.FC<NotesListProps> = ({
           ) : (
             <button
               onClick={onNewPhaste}
-              className="p-1.5 rounded-lg text-[#6d4c41] dark:text-[#d7ccc8] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-transform"
-              title="New Phaste (or paste clipboard anywhere)"
+              className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#6d4c41] dark:text-[#d7ccc8] hover:text-white hover:bg-[#8d6e63] dark:hover:bg-[#8d6e63] active:scale-95 transition-all flex items-center space-x-1 border border-[#e5e2da]/70 dark:border-[#4e342e]/60 hover:border-transparent"
+              title="Create new phaste (⌘N)"
             >
-              <SquarePen className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
+              <span>New</span>
             </button>
           )}
         </div>
@@ -339,6 +341,16 @@ export const NotesList: React.FC<NotesListProps> = ({
           progress={fade.progress}
           surfaceClassName="from-[#fbfbfa] dark:from-[#1b1614]"
         />
+
+        {/* Mobile Floating Action Button (FAB) */}
+        <button
+          onClick={onNewPhaste}
+          className="md:hidden fixed bottom-6 right-6 z-30 p-3.5 rounded-full bg-[#8d6e63] hover:bg-[#795548] text-white shadow-lg active:scale-90 transition-transform flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#8d6e63]/50"
+          title="Create New Phaste"
+          aria-label="Create New Phaste"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
       </div>
     </div>
   );

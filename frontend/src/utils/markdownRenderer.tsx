@@ -66,12 +66,19 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (!inCodeBlock) return;
     const text = codeBlockLines.join('\n');
     elements.push(
-      <pre
-        key={`code-${elements.length}`}
-        className="my-3 p-4 rounded-xl bg-[#241e1b] text-[#f5f5f7] font-mono text-xs overflow-x-auto border border-[#4e342e]/40 leading-relaxed"
+      <div
+        key={`code-box-${elements.length}`}
+        className="my-3.5 rounded-xl overflow-hidden border border-[#e5e2da]/60 dark:border-[#4e342e]/50 bg-[#241e1b] shadow-xs"
       >
-        <code>{text}</code>
-      </pre>
+        {codeBlockLang && (
+          <div className="px-3.5 py-1.5 bg-[#1b1614] border-b border-[#3a2e2a] text-[10px] font-mono uppercase tracking-wider text-[#a1887f]">
+            {codeBlockLang}
+          </div>
+        )}
+        <pre className="p-4 text-[#f5f5f7] font-mono text-xs overflow-x-auto leading-relaxed">
+          <code>{text}</code>
+        </pre>
+      </div>
     );
     codeBlockLines = [];
     codeBlockLang = '';
@@ -155,7 +162,20 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       continue;
     }
 
-    // 4. Bullet lists (- item or * item)
+    // 4. Ordered lists (1. item, 2. item)
+    const orderedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+    if (orderedMatch) {
+      const num = orderedMatch[2];
+      const itemText = orderedMatch[3];
+      elements.push(
+        <li key={`oli-${i}`} value={parseInt(num, 10)} className="ml-5 list-decimal text-sm text-[#3e2723] dark:text-[#efebe9] my-1 leading-relaxed">
+          {renderInline(itemText, onTagClick)}
+        </li>
+      );
+      continue;
+    }
+
+    // 5. Bullet lists (- item or * item)
     if (/^\s*[-*]\s+/.test(line)) {
       const itemText = line.replace(/^\s*[-*]\s+/, '');
       elements.push(
@@ -166,7 +186,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       continue;
     }
 
-    // 5. Headings
+    // 6. Horizontal Rule (---, ***, ___)
+    if (/^\s*([-*_]){3,}\s*$/.test(line)) {
+      elements.push(
+        <hr key={`hr-${i}`} className="my-6 border-t border-[#e5e2da] dark:border-[#4e342e]/60" />
+      );
+      continue;
+    }
+
+    // 7. Headings
     if (line.startsWith('# ')) {
       elements.push(
         <h1 key={`h1-${i}`} className="text-2xl font-bold text-[#3e2723] dark:text-[#efebe9] mt-6 mb-2 tracking-tight">
@@ -188,6 +216,30 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         <h3 key={`h3-${i}`} className="text-lg font-semibold text-[#3e2723] dark:text-[#efebe9] mt-4 mb-1.5">
           {renderInline(line.slice(4), onTagClick)}
         </h3>
+      );
+      continue;
+    }
+    if (line.startsWith('#### ')) {
+      elements.push(
+        <h4 key={`h4-${i}`} className="text-base font-semibold text-[#3e2723] dark:text-[#efebe9] mt-3.5 mb-1">
+          {renderInline(line.slice(5), onTagClick)}
+        </h4>
+      );
+      continue;
+    }
+    if (line.startsWith('##### ')) {
+      elements.push(
+        <h5 key={`h5-${i}`} className="text-sm font-semibold uppercase tracking-wider text-[#6d4c41] dark:text-[#d7ccc8] mt-3 mb-1">
+          {renderInline(line.slice(6), onTagClick)}
+        </h5>
+      );
+      continue;
+    }
+    if (line.startsWith('###### ')) {
+      elements.push(
+        <h6 key={`h6-${i}`} className="text-xs font-semibold uppercase tracking-wider text-[#8d6e63] dark:text-[#a1887f] mt-2.5 mb-1">
+          {renderInline(line.slice(7), onTagClick)}
+        </h6>
       );
       continue;
     }
@@ -238,8 +290,8 @@ function renderInline(text: string, onTagClick?: (tag: string) => void): React.R
   if (!text) return [];
 
   // Tokenize regex
-  // 1: bold, 2: italic, 3: strike, 4: code, 5: link, 6: hashtag
-  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`|\[[^\]]+\]\([^)]+\)|#([a-zA-Z0-9_\-]+))/g;
+  // 1: image, 2: bold, 3: italic, 4: strike, 5: code, 6: link, 7: hashtag
+  const regex = /(!\[[^\]]*\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`|\[[^\]]+\]\([^)]+\)|#([a-zA-Z0-9_\-]+))/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -250,7 +302,18 @@ function renderInline(text: string, onTagClick?: (tag: string) => void): React.R
     }
 
     const token = match[0];
-    if (token.startsWith('**') && token.endsWith('**')) {
+    if (token.startsWith('![') && token.includes('](') && token.endsWith(')')) {
+      const alt = token.slice(2, token.indexOf(']('));
+      const url = token.slice(token.indexOf('](') + 2, -1);
+      parts.push(
+        <img
+          key={`img-${match.index}`}
+          src={url}
+          alt={alt}
+          className="my-2 max-h-[380px] rounded-xl object-contain border border-[#e5e2da] dark:border-[#4e342e]/50 shadow-xs block"
+        />
+      );
+    } else if (token.startsWith('**') && token.endsWith('**')) {
       parts.push(
         <strong key={`b-${match.index}`} className="font-semibold text-[#3e2723] dark:text-[#efebe9]">
           {token.slice(2, -2)}

@@ -19,10 +19,17 @@ import {
   Archive,
   Sparkles,
   Folder,
+  Plus,
+  Clipboard,
 } from 'lucide-react';
 import { Phaste } from '../types';
 import { getMediaUrl, updatePhaste, uploadPhasteFile, aiEnrichPhaste } from '../api';
 import { MarkdownRenderer } from '../utils/markdownRenderer';
+import {
+  processClipboardToMarkdown,
+  readClipboardMarkdown,
+  parseMarkdownPhaste,
+} from '../utils/markdownClipboard';
 import { AgentThinking } from './base/AgentThinking';
 import { ScrollFade, useScrollFade } from './base/ScrollFade';
 import { Kbd } from './base/Kbd';
@@ -37,6 +44,7 @@ interface NoteCanvasProps {
   onBackMobile?: () => void;
   onShowToast: (msg: string, type?: 'info' | 'success' | 'error') => void;
   onCategoryClick?: (category: string) => void;
+  onNewPhaste?: () => void;
 }
 
 export const NoteCanvas: React.FC<NoteCanvasProps> = ({
@@ -49,6 +57,7 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
   onBackMobile,
   onShowToast,
   onCategoryClick,
+  onNewPhaste,
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -67,13 +76,15 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
       clearTimeout(saveTimeoutRef.current);
     }
     if (phaste) {
+      const noteContent = phaste.content || phaste.ocr_transcript || '';
       setTitle(phaste.title || '');
-      setContent(phaste.content || phaste.ocr_transcript || '');
-      // Default to view mode for rich rendering (user can click to edit or toggle B I U)
-      setIsEditMode(false);
+      setContent(noteContent);
+      // If note has no content, open directly in edit mode for immediate typing or pasting
+      setIsEditMode(!noteContent.trim() || phaste.id.startsWith('temp-'));
     } else {
       setTitle('');
       setContent('');
+      setIsEditMode(false);
     }
   }, [phaste?.id]);
 
@@ -92,6 +103,78 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
     }
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      const md = await readClipboardMarkdown();
+      if (!md || !md.trim()) {
+        onShowToast('Clipboard is empty or does not contain text', 'info');
+        return;
+      }
+      const parsed = parseMarkdownPhaste({ plain: md });
+      let nextTitle = title;
+      if (!title || title === '📝 Untitled Phaste' || title === 'Untitled Phaste') {
+        nextTitle = parsed.title;
+        setTitle(nextTitle);
+      }
+      setContent(parsed.content);
+      // Keep in view mode if it has markdown formatting so user sees the rich render immediately!
+      setIsEditMode(false);
+      triggerAutoSave(nextTitle, parsed.content);
+      onShowToast('Markdown pasted and formatted!', 'success');
+    } catch (err: any) {
+      onShowToast('Failed to read clipboard', 'error');
+    }
+  };
+
+  const handleTextareaPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = e.clipboardData.files?.[0];
+    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+      return;
+    }
+
+    const html = e.clipboardData.getData('text/html');
+    const plain = e.clipboardData.getData('text/plain');
+
+    if (html || plain) {
+      const markdown = processClipboardToMarkdown(html, plain);
+      if (markdown) {
+        e.preventDefault();
+        const textarea = textareaRef.current;
+        if (!textarea) {
+          handleContentChange(content ? `${content}\n\n${markdown}` : markdown);
+          return;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const replacement = markdown;
+        const newContent =
+          textarea.value.substring(0, start) +
+          replacement +
+          textarea.value.substring(end);
+
+        let nextTitle = title;
+        if (!title || title === '📝 Untitled Phaste' || title === 'Untitled Phaste') {
+          const parsed = parseMarkdownPhaste({ plain: markdown });
+          if (parsed.title && parsed.title !== '📝 Untitled Phaste') {
+            nextTitle = parsed.title;
+            setTitle(nextTitle);
+          }
+        }
+
+        handleContentChange(newContent);
+
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(
+            start + replacement.length,
+            start + replacement.length
+          );
+        }, 0);
+      }
+    }
+  };
+
   if (!phaste) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center h-full bg-white dark:bg-[#1b1614] text-[#a1887f] p-8 text-center select-none">
@@ -106,6 +189,15 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
           <Kbd>⌘N</Kbd>
           <span>to create.</span>
         </p>
+        {onNewPhaste && (
+          <button
+            onClick={onNewPhaste}
+            className="mt-4 inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#8d6e63] hover:bg-[#795548] text-white text-xs font-medium shadow-xs active:scale-95 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create New Phaste</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -389,12 +481,36 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
         )}
 
         {/* Content Area: Markdown View or Textarea Edit */}
+        {(!content || !content.trim()) && (
+          <div className="mb-6 p-4 rounded-2xl bg-[#f5f5f7]/80 dark:bg-[#241e1b]/80 border border-dashed border-[#e5e2da] dark:border-[#4e342e] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="flex items-center space-x-3 text-[#6d4c41] dark:text-[#d7ccc8]">
+              <div className="p-2 rounded-xl bg-white dark:bg-[#2d2421] shadow-xs text-base">
+                📋
+              </div>
+              <div>
+                <p className="font-semibold text-[#3e2723] dark:text-[#efebe9]">Paste Markdown or Rich Text</p>
+                <p className="text-[#a1887f]">Formatted web/doc text or unformatted markdown syntax is handled automatically.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handlePasteFromClipboard}
+              className="px-3.5 py-2 rounded-xl bg-[#8d6e63] hover:bg-[#795548] text-white font-medium shadow-xs flex items-center space-x-1.5 active:scale-95 transition-all shrink-0"
+              title="Paste markdown or formatted text from clipboard"
+            >
+              <Clipboard className="w-3.5 h-3.5" />
+              <span>Paste Clipboard</span>
+            </button>
+          </div>
+        )}
+
         {isEditMode ? (
           <div className="relative">
             <textarea
               ref={textareaRef}
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
+              onPaste={handleTextareaPaste}
               placeholder="Write phaste in haste... Markdown, #hashtags, and - [ ] checkboxes supported."
               className="w-full min-h-[350px] bg-transparent text-[#3e2723] dark:text-[#efebe9] font-sans text-sm leading-relaxed border-none focus:outline-none resize-none placeholder:text-[#a1887f]/50"
               autoFocus

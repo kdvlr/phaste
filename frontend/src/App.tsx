@@ -305,6 +305,26 @@ export const App: React.FC = () => {
     }
   };
 
+  // Global ⌘N / Ctrl+N shortcut to create a new phaste
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
+        const target = e.target as HTMLElement;
+        const isEditing =
+          target &&
+          (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable);
+        if (!isEditing) {
+          e.preventDefault();
+          handleNewPhaste();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [selectedCategory]);
+
   // Instant note selection (0ms, zero network requests, no screen flash)
   const handleSelectPhaste = (p: Phaste) => {
     setSelectedPhasteId(p.id);
@@ -519,6 +539,7 @@ export const App: React.FC = () => {
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onEmptyTrash={handleEmptyTrashRequest}
+        onNewPhaste={handleNewPhaste}
       />
 
       {/* Pane 2: Phastes List Column */}
@@ -563,6 +584,7 @@ export const App: React.FC = () => {
             setSelectedCollection('all');
             if (window.innerWidth < 768) setMobileScreen('list');
           }}
+          onNewPhaste={handleNewPhaste}
         />
       </div>
 

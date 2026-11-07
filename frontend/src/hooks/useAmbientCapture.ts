@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPhasteText, uploadPhasteFile } from '../api';
 import { Phaste } from '../types';
+import { parseMarkdownPhaste } from '../utils/markdownClipboard';
 
 interface AmbientCaptureOptions {
   onOptimisticCreate?: (tempPhaste: Phaste) => void;
@@ -89,14 +90,16 @@ export function useAmbientCapture({
         }
       }
 
-      // Check for Text payload
+      // Check for Text / Markdown / HTML payload
       if (!isInputFocused) {
+        const html = e.clipboardData.getData('text/html');
         const text = e.clipboardData.getData('text/plain');
-        if (text && text.trim()) {
+        if ((html && html.trim()) || (text && text.trim())) {
           e.preventDefault();
           setIsSubmitting(true);
 
-          const trimmed = text.trim();
+          const parsed = parseMarkdownPhaste({ html, plain: text });
+          const trimmed = parsed.content;
           const tempId = `temp-${Date.now()}`;
           const isUrl = isLikelyUrl(trimmed);
           const isVideo =
@@ -105,13 +108,9 @@ export function useAmbientCapture({
               trimmed
             );
           const kind = isVideo ? 'video' : isUrl ? 'link' : 'text';
-          const firstLine = trimmed
-            .split('\n')[0]
-            .replace(/^#+\s*/, '')
-            .slice(0, 60);
           const initialTitle = isUrl
             ? trimmed
-            : firstLine || '📝 Untitled Phaste';
+            : parsed.title || '📝 Untitled Phaste';
 
           const optimistic: Phaste = {
             id: tempId,
@@ -120,11 +119,12 @@ export function useAmbientCapture({
             status: 'processing',
             title: initialTitle,
             content: trimmed,
-            tags: extractClientHashtags(trimmed),
+            category: parsed.category || null,
+            tags: parsed.tags,
             is_pinned: false,
             is_archived: false,
             is_trash: false,
-            is_todo: trimmed.includes('- [ ]') || trimmed.includes('- [x]'),
+            is_todo: parsed.isTodo,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             metadata_context: {
@@ -136,13 +136,13 @@ export function useAmbientCapture({
           onOptimisticCreate?.(optimistic);
 
           try {
-            const res = await createPhasteText(trimmed);
+            const res = await createPhasteText(trimmed, kind, initialTitle, parsed.category);
             const kindLabel =
               res.kind === 'video'
                 ? 'video link'
                 : res.kind === 'link'
                 ? 'link'
-                : 'phaste';
+                : 'markdown phaste';
             onSuccess(res, `Captured ${kindLabel} in haste!`, tempId);
           } catch (err: any) {
             onError(err.message || 'Failed to capture pasted text', tempId);
