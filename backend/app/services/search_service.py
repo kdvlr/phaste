@@ -125,17 +125,48 @@ async def execute_hybrid_search(
     params["query_vector"] = str(query_vector)
     params["text_query"] = cleaned_query
 
+    # Extract individual search words for multi-term query (matching across document, not just in sequence)
+    raw_words = [w.strip() for w in re.findall(r'[a-zA-Z0-9_\-]+', cleaned_query) if len(w.strip()) > 0]
+    search_words = raw_words if raw_words else [cleaned_query]
+
+    and_tsquery = " & ".join(search_words)
+    or_tsquery = " | ".join(search_words)
+    params["and_tsquery"] = and_tsquery
+    params["or_tsquery"] = or_tsquery
+
+    ilike_clauses = []
+    for i, w in enumerate(search_words[:8]):
+        p_name = f"sw_{i}"
+        params[p_name] = f"%{w}%"
+        ilike_clauses.append(f"title ILIKE :{p_name} OR content ILIKE :{p_name} OR ocr_transcript ILIKE :{p_name}")
+    
+    words_ilike_sql = f"({') OR ('.join(ilike_clauses)})" if ilike_clauses else "1=1"
+
     # 3. Hybrid query with Reciprocal Rank Fusion (RRF)
-    # Uses PostgreSQL websearch_to_tsquery for natural queries ("term1 or term2", "phrase")
+    # Multi-term full-text search:
+    # 1. Documents matching ALL words receive highest rank bonus
+    # 2. Documents matching ANY word are included
+    # 3. Exact full-phrase matches receive extra boost
     hybrid_sql = f"""
         WITH lexical_ranked AS (
             SELECT id,
-                   ts_rank_cd(search_vector, websearch_to_tsquery('english', :text_query)) AS text_rank,
-                   ROW_NUMBER() OVER (ORDER BY ts_rank_cd(search_vector, websearch_to_tsquery('english', :text_query)) DESC) AS text_pos
+                   (
+                       (CASE WHEN search_vector @@ to_tsquery('english', :and_tsquery) THEN 3.0 ELSE 0.0 END) +
+                       ts_rank_cd(search_vector, to_tsquery('english', :or_tsquery)) +
+                       (CASE WHEN (title ILIKE '%' || :text_query || '%' OR content ILIKE '%' || :text_query || '%') THEN 1.5 ELSE 0.0 END)
+                   ) AS text_rank,
+                   ROW_NUMBER() OVER (
+                       ORDER BY (
+                           (CASE WHEN search_vector @@ to_tsquery('english', :and_tsquery) THEN 3.0 ELSE 0.0 END) +
+                           ts_rank_cd(search_vector, to_tsquery('english', :or_tsquery)) +
+                           (CASE WHEN (title ILIKE '%' || :text_query || '%' OR content ILIKE '%' || :text_query || '%') THEN 1.5 ELSE 0.0 END)
+                       ) DESC
+                   ) AS text_pos
             FROM phastes
             WHERE {where_sql}
               AND (
-                  search_vector @@ websearch_to_tsquery('english', :text_query)
+                  search_vector @@ to_tsquery('english', :or_tsquery)
+                  OR {words_ilike_sql}
                   OR title ILIKE '%' || :text_query || '%'
                   OR content ILIKE '%' || :text_query || '%'
                   OR ocr_transcript ILIKE '%' || :text_query || '%'
@@ -195,17 +226,20 @@ async def execute_hybrid_search(
     except Exception as e:
         logger.warning(f"Hybrid search failed, rolling back and falling back to ILIKE: {e}")
         await db.rollback()
-        # Fallback to simple ILIKE search if tsquery or vector fails
+        # Fallback to multi-term ILIKE search if tsquery or vector fails
         fallback_sql = f"""
-            SELECT *, 0.5 AS score, 'lexical' AS match_type
+            SELECT *,
+                   (CASE WHEN (title ILIKE '%' || :text_query || '%' OR content ILIKE '%' || :text_query || '%') THEN 1.0 ELSE 0.5 END) AS score,
+                   'lexical' AS match_type
             FROM phastes
             WHERE {where_sql}
               AND (
-                  title ILIKE '%' || :text_query || '%'
+                  {words_ilike_sql}
+                  OR title ILIKE '%' || :text_query || '%'
                   OR content ILIKE '%' || :text_query || '%'
                   OR ocr_transcript ILIKE '%' || :text_query || '%'
               )
-            ORDER BY is_pinned DESC, created_at DESC
+            ORDER BY score DESC, is_pinned DESC, created_at DESC
             LIMIT :limit OFFSET :offset
         """
         fallback_res = await db.execute(text(fallback_sql), params)

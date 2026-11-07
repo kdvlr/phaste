@@ -34,7 +34,11 @@ import {
   readClipboardMarkdown,
   parseMarkdownPhaste,
 } from '../utils/markdownClipboard';
-import { countSearchMatches, highlightSearchText } from '../utils/searchHighlight';
+import {
+  countSearchMatches,
+  highlightSearchText,
+  findBestMatchIndex,
+} from '../utils/searchHighlight';
 import { AgentThinking } from './base/AgentThinking';
 import { ScrollFade, useScrollFade } from './base/ScrollFade';
 import { Kbd } from './base/Kbd';
@@ -98,9 +102,15 @@ export const NoteCanvas: React.FC<NoteCanvasProps> = ({
     setCurrentMatchIndex((prev) => (prev - 1 + totalMatches) % totalMatches);
   }, [totalMatches]);
 
-  // Reset match index when selected note or query changes
+  // Set initial match index: jumps directly to the line where multiple search words co-occur
   useEffect(() => {
-    setCurrentMatchIndex(0);
+    if (!phaste || !searchQuery || !searchQuery.trim()) {
+      setCurrentMatchIndex(0);
+      return;
+    }
+    const fullDoc = `${phaste.title || ''}\n${phaste.content || ''}\n${phaste.ocr_transcript || ''}`;
+    const bestIdx = findBestMatchIndex(fullDoc, searchQuery);
+    setCurrentMatchIndex(bestIdx);
   }, [phaste?.id, searchQuery]);
 
   // Smoothly scroll to the active search match
